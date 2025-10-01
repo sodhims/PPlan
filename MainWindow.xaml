@@ -9,6 +9,8 @@
         <SolidColorBrush x:Key="Phase3Color" Color="#50C878"/>
         <SolidColorBrush x:Key="MilestoneColor" Color="#FF6B6B"/>
         <SolidColorBrush x:Key="DependencyLineColor" Color="#95A5A6"/>
+        <SolidColorBrush x:Key="CriticalPathColor" Color="#E74C3C"/>
+        <SolidColorBrush x:Key="CriticalPathDependencyColor" Color="#C0392B"/>
     </Window.Resources>
     
     <Grid Background="#F5F5F5">
@@ -37,7 +39,13 @@
                 <Border Width="20" Height="20" Background="{StaticResource Phase2Color}" CornerRadius="3" Margin="0,0,5,0"/>
                 <TextBlock Text="Phase 2" Margin="0,0,20,0" VerticalAlignment="Center"/>
                 <Border Width="20" Height="20" Background="{StaticResource Phase3Color}" CornerRadius="3" Margin="0,0,5,0"/>
-                <TextBlock Text="Phase 3" VerticalAlignment="Center"/>
+                <TextBlock Text="Phase 3" Margin="0,0,30,0" VerticalAlignment="Center"/>
+                <Border Width="20" Height="20" Background="{StaticResource CriticalPathColor}" CornerRadius="3" Margin="0,0,5,0">
+                    <Border.Effect>
+                        <DropShadowEffect Color="Red" Opacity="0.4" BlurRadius="4" ShadowDepth="0"/>
+                    </Border.Effect>
+                </Border>
+                <TextBlock Text="Critical Path" Margin="0,0,10,0" VerticalAlignment="Center" FontWeight="Bold"/>
             </StackPanel>
         </Border>
         

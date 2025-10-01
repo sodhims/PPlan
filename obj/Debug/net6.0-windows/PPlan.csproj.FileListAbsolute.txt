@@ -17,3 +17,4 @@ C:\Users\sodhi\source\repos\PPlan\PPlan\obj\Debug\net6.0-windows\refint\PPlan.dl
 C:\Users\sodhi\source\repos\PPlan\PPlan\obj\Debug\net6.0-windows\PPlan.pdb
 C:\Users\sodhi\source\repos\PPlan\PPlan\obj\Debug\net6.0-windows\PPlan.genruntimeconfig.cache
 C:\Users\sodhi\source\repos\PPlan\PPlan\obj\Debug\net6.0-windows\ref\PPlan.dll
+C:\Users\sodhi\source\repos\PPlan\PPlan\obj\Debug\net6.0-windows\PPlan.sourcelink.json
