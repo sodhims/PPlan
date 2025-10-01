@@ -1,0 +1,121 @@
+﻿<Window x:Class="ProjectPlanViewer.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="MES Project Plan Viewer" Height="800" Width="1400">
+    
+    <Window.Resources>
+        <SolidColorBrush x:Key="Phase1Color" Color="#4A90E2"/>
+        <SolidColorBrush x:Key="Phase2Color" Color="#7B68EE"/>
+        <SolidColorBrush x:Key="Phase3Color" Color="#50C878"/>
+        <SolidColorBrush x:Key="MilestoneColor" Color="#FF6B6B"/>
+        <SolidColorBrush x:Key="DependencyLineColor" Color="#95A5A6"/>
+    </Window.Resources>
+    
+    <Grid Background="#F5F5F5">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="70"/>
+            <RowDefinition Height="50"/>
+            <RowDefinition Height="50"/>
+            <RowDefinition Height="580"/>
+            <RowDefinition Height="50"/>
+        </Grid.RowDefinitions>
+        
+        <Border Grid.Row="0" Background="#2C3E50" Padding="20,15">
+            <StackPanel Orientation="Horizontal">
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="MES Project Plan" FontSize="24" FontWeight="Bold" Foreground="White"/>
+                    <TextBlock x:Name="ProjectInfoText" Text="Ready to load" FontSize="12" Foreground="#BDC3C7" Margin="0,5,0,0"/>
+                </StackPanel>
+                <Button Content="Load CSV" Click="LoadCSV_Click" Margin="50,0,0,0" Padding="20,10" Background="#3498DB" Foreground="White" BorderThickness="0" Cursor="Hand"/>
+            </StackPanel>
+        </Border>
+        
+        <Border Grid.Row="1" Background="White" BorderBrush="#E0E0E0" BorderThickness="0,0,0,1" Padding="20,10">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                <Border Width="20" Height="20" Background="{StaticResource Phase1Color}" CornerRadius="3" Margin="0,0,5,0"/>
+                <TextBlock Text="Phase 1" Margin="0,0,20,0" VerticalAlignment="Center"/>
+                <Border Width="20" Height="20" Background="{StaticResource Phase2Color}" CornerRadius="3" Margin="0,0,5,0"/>
+                <TextBlock Text="Phase 2" Margin="0,0,20,0" VerticalAlignment="Center"/>
+                <Border Width="20" Height="20" Background="{StaticResource Phase3Color}" CornerRadius="3" Margin="0,0,5,0"/>
+                <TextBlock Text="Phase 3" VerticalAlignment="Center"/>
+            </StackPanel>
+        </Border>
+        
+        <Border Grid.Row="2" Background="White" BorderBrush="#E0E0E0" BorderThickness="0,0,0,1" Padding="20,10">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <TextBlock Text="Zoom:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                <Button Content="-" Click="ZoomOut_Click" Width="30" Height="30" Margin="5"/>
+                <Slider x:Name="ZoomSlider" Width="200" Minimum="0.5" Maximum="3" Value="1" VerticalAlignment="Center" ValueChanged="ZoomSlider_ValueChanged"/>
+                <Button Content="+" Click="ZoomIn_Click" Width="30" Height="30" Margin="5"/>
+                <TextBlock x:Name="ZoomPercentText" Text="100%" Width="50" VerticalAlignment="Center" Margin="10,0"/>
+                <Button Content="Reset" Click="ZoomReset_Click" Padding="10,5" Margin="5" Background="#3498DB" Foreground="White" BorderThickness="0"/>
+            </StackPanel>
+        </Border>
+        
+        <ScrollViewer Grid.Row="3" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" x:Name="GanttScrollViewer">
+            <StackPanel Orientation="Horizontal">
+                <Border Width="400" BorderBrush="#E0E0E0" BorderThickness="0,0,1,0" Background="#FAFAFA">
+                    <StackPanel>
+                        <Border Height="50" Background="#ECF0F1" BorderBrush="#E0E0E0" BorderThickness="0,0,0,1">
+                            <Grid Width="400">
+                                <TextBlock Text="ID" Width="60" HorizontalAlignment="Left" FontWeight="Bold" Padding="10,15"/>
+                                <TextBlock Text="WBS" Width="100" Margin="60,0,0,0" HorizontalAlignment="Left" FontWeight="Bold" Padding="10,15"/>
+                                <TextBlock Text="Task Name" Margin="160,0,0,0" HorizontalAlignment="Left" FontWeight="Bold" Padding="10,15"/>
+                            </Grid>
+                        </Border>
+					<ItemsControl x:Name="TaskListItems">
+						<ItemsControl.ItemTemplate>
+							<DataTemplate>
+								<Border BorderBrush="#E0E0E0" 
+									   BorderThickness="0,0,0,1" 
+									   Height="40"
+									   Background="{Binding RowBackground}">
+									<Grid Width="400">
+										<Grid.ColumnDefinitions>
+											<ColumnDefinition Width="60"/>
+											<ColumnDefinition Width="100"/>
+											<ColumnDefinition Width="240"/>
+										</Grid.ColumnDefinitions>
+										
+										<TextBox Grid.Column="0" 
+												 Text="{Binding ID, UpdateSourceTrigger=PropertyChanged}" 
+												 VerticalContentAlignment="Center"
+												 TextAlignment="Center"
+												 BorderThickness="0"
+												 Background="Transparent"
+												 Padding="5,0"
+												 FontSize="12"/>
+										
+										<TextBox Grid.Column="1" 
+												 Text="{Binding WBS, UpdateSourceTrigger=PropertyChanged}" 
+												 VerticalContentAlignment="Center"
+												 BorderThickness="0"
+												 Background="Transparent"
+												 Padding="5,0"
+												 FontSize="12"/>
+										
+										<TextBox Grid.Column="2" 
+												 Text="{Binding TaskName, UpdateSourceTrigger=PropertyChanged}" 
+												 VerticalContentAlignment="Center"
+												 BorderThickness="0"
+												 Background="Transparent"
+												 Padding="{Binding IndentMargin}"
+												 FontWeight="{Binding FontWeight}"
+												 FontSize="12"
+												 TextChanged="TaskName_TextChanged"/>
+									</Grid>
+								</Border>
+							</DataTemplate>
+						</ItemsControl.ItemTemplate>
+					</ItemsControl>
+                    </StackPanel>
+                </Border>
+                <Canvas x:Name="TimelineCanvas" Background="White" Width="1600" Height="1500"/>
+            </StackPanel>
+        </ScrollViewer>
+        
+        <Border Grid.Row="4" Background="#ECF0F1" Padding="20,10">
+            <TextBlock x:Name="StatusText" Text="Ready to load project plan" FontSize="11" Foreground="#7F8C8D"/>
+        </Border>
+    </Grid>
+</Window>
