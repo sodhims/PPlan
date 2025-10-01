@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\sodhi\\source\\repos\\PPlan\\PPlan\\PPlan.csproj": {}
+    "c:\\Users\\sodhi\\source\\repos\\PPlan\\PPlan\\PPlan.csproj": {}
   },
   "projects": {
-    "C:\\Users\\sodhi\\source\\repos\\PPlan\\PPlan\\PPlan.csproj": {
+    "c:\\Users\\sodhi\\source\\repos\\PPlan\\PPlan\\PPlan.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\sodhi\\source\\repos\\PPlan\\PPlan\\PPlan.csproj",
+        "projectUniqueName": "c:\\Users\\sodhi\\source\\repos\\PPlan\\PPlan\\PPlan.csproj",
         "projectName": "PPlan",
-        "projectPath": "C:\\Users\\sodhi\\source\\repos\\PPlan\\PPlan\\PPlan.csproj",
+        "projectPath": "c:\\Users\\sodhi\\source\\repos\\PPlan\\PPlan\\PPlan.csproj",
         "packagesPath": "C:\\Users\\sodhi\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\sodhi\\source\\repos\\PPlan\\PPlan\\obj\\",
+        "outputPath": "c:\\Users\\sodhi\\source\\repos\\PPlan\\PPlan\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -83,7 +83,7 @@
             "Microsoft.NETCore.App": {
               "privateAssets": "all"
             },
-            "Microsoft.WindowsDesktop.App.WPF": {
+            "Microsoft.WindowsDesktop.App": {
               "privateAssets": "none"
             }
           },

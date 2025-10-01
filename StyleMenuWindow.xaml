@@ -1,0 +1,282 @@
+<Window x:Class="ProjectPlanViewer.StyleMenuWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Gantt Chart Styles" Height="650" Width="500"
+        WindowStartupLocation="CenterOwner"
+        Background="#F5F5F5">
+    
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="60"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="60"/>
+        </Grid.RowDefinitions>
+        
+        <!-- Header -->
+        <Border Grid.Row="0" Background="#2C3E50" Padding="20,15">
+            <TextBlock Text="Customize Gantt Chart Styles" 
+                       FontSize="20" 
+                       FontWeight="Bold" 
+                       Foreground="White"
+                       VerticalAlignment="Center"/>
+        </Border>
+        
+        <!-- Content -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="20">
+                
+                <!-- Task Bar Colors Section -->
+                <Border Background="White" 
+                        Padding="15" 
+                        Margin="0,0,0,15" 
+                        CornerRadius="5"
+                        BorderBrush="#E0E0E0"
+                        BorderThickness="1">
+                    <StackPanel>
+                        <TextBlock Text="Task Bar Colors" 
+                                   FontSize="16" 
+                                   FontWeight="Bold" 
+                                   Margin="0,0,0,15"/>
+                        
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="120"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="40"/>
+                                <RowDefinition Height="40"/>
+                                <RowDefinition Height="40"/>
+                                <RowDefinition Height="40"/>
+                            </Grid.RowDefinitions>
+                            
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Phase 1:" VerticalAlignment="Center"/>
+                            <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal">
+                                <Border x:Name="Phase1ColorPreview" Width="80" Height="25" CornerRadius="3" Margin="0,0,10,0"/>
+                                <Button Content="Choose Color" Click="ChoosePhase1Color_Click" Padding="10,5"/>
+                            </StackPanel>
+                            
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Phase 2:" VerticalAlignment="Center"/>
+                            <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal">
+                                <Border x:Name="Phase2ColorPreview" Width="80" Height="25" CornerRadius="3" Margin="0,0,10,0"/>
+                                <Button Content="Choose Color" Click="ChoosePhase2Color_Click" Padding="10,5"/>
+                            </StackPanel>
+                            
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Phase 3:" VerticalAlignment="Center"/>
+                            <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal">
+                                <Border x:Name="Phase3ColorPreview" Width="80" Height="25" CornerRadius="3" Margin="0,0,10,0"/>
+                                <Button Content="Choose Color" Click="ChoosePhase3Color_Click" Padding="10,5"/>
+                            </StackPanel>
+                            
+                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Critical Path:" VerticalAlignment="Center"/>
+                            <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal">
+                                <Border x:Name="CriticalColorPreview" Width="80" Height="25" CornerRadius="3" Margin="0,0,10,0"/>
+                                <Button Content="Choose Color" Click="ChooseCriticalColor_Click" Padding="10,5"/>
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+                
+                <!-- Font Settings Section -->
+                <Border Background="White" 
+                        Padding="15" 
+                        Margin="0,0,0,15" 
+                        CornerRadius="5"
+                        BorderBrush="#E0E0E0"
+                        BorderThickness="1">
+                    <StackPanel>
+                        <TextBlock Text="Task Label Font" 
+                                   FontSize="16" 
+                                   FontWeight="Bold" 
+                                   Margin="0,0,0,15"/>
+                        
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="120"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="40"/>
+                                <RowDefinition Height="40"/>
+                            </Grid.RowDefinitions>
+                            
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Font Family:" VerticalAlignment="Center"/>
+                            <ComboBox x:Name="FontFamilyCombo" 
+                                      Grid.Row="0" 
+                                      Grid.Column="1" 
+                                      Height="30"
+                                      SelectionChanged="FontFamily_SelectionChanged">
+                                <ComboBoxItem Content="Segoe UI" IsSelected="True"/>
+                                <ComboBoxItem Content="Arial"/>
+                                <ComboBoxItem Content="Calibri"/>
+                                <ComboBoxItem Content="Verdana"/>
+                                <ComboBoxItem Content="Tahoma"/>
+                                <ComboBoxItem Content="Consolas"/>
+                            </ComboBox>
+                            
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Font Size:" VerticalAlignment="Center"/>
+                            <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal">
+                                <Slider x:Name="FontSizeSlider" 
+                                        Width="200" 
+                                        Minimum="8" 
+                                        Maximum="14" 
+                                        Value="10"
+                                        TickFrequency="1"
+                                        IsSnapToTickEnabled="True"
+                                        VerticalAlignment="Center"
+                                        ValueChanged="FontSize_ValueChanged"/>
+                                <TextBlock x:Name="FontSizeLabel" 
+                                           Text="10 pt" 
+                                           Width="50" 
+                                           VerticalAlignment="Center" 
+                                           Margin="10,0,0,0"/>
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+                
+                <!-- Dependency Arrow Style Section -->
+                <Border Background="White" 
+                        Padding="15" 
+                        Margin="0,0,0,15" 
+                        CornerRadius="5"
+                        BorderBrush="#E0E0E0"
+                        BorderThickness="1">
+                    <StackPanel>
+                        <TextBlock Text="Dependency Arrow Style" 
+                                   FontSize="16" 
+                                   FontWeight="Bold" 
+                                   Margin="0,0,0,15"/>
+                        
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="120"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="40"/>
+                                <RowDefinition Height="40"/>
+                                <RowDefinition Height="40"/>
+                            </Grid.RowDefinitions>
+                            
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Line Style:" VerticalAlignment="Center"/>
+                            <ComboBox x:Name="ArrowStyleCombo" 
+                                      Grid.Row="0" 
+                                      Grid.Column="1" 
+                                      Height="30"
+                                      SelectionChanged="ArrowStyle_SelectionChanged">
+                                <ComboBoxItem Content="Dashed"/>
+                                <ComboBoxItem Content="Solid"/>
+                                <ComboBoxItem Content="Dotted"/>
+                                <ComboBoxItem Content="Dash-Dot"/>
+                            </ComboBox>
+                            
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Line Thickness:" VerticalAlignment="Center"/>
+                            <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal">
+                                <Slider x:Name="ArrowThicknessSlider" 
+                                        Width="200" 
+                                        Minimum="1" 
+                                        Maximum="4" 
+                                        Value="1.5"
+                                        TickFrequency="0.5"
+                                        IsSnapToTickEnabled="True"
+                                        VerticalAlignment="Center"
+                                        ValueChanged="ArrowThickness_ValueChanged"/>
+                                <TextBlock x:Name="ArrowThicknessLabel" 
+                                           Text="1.5 px" 
+                                           Width="50" 
+                                           VerticalAlignment="Center" 
+                                           Margin="10,0,0,0"/>
+                            </StackPanel>
+                            
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Arrow Color:" VerticalAlignment="Center"/>
+                            <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal">
+                                <Border x:Name="ArrowColorPreview" Width="80" Height="25" CornerRadius="3" Margin="0,0,10,0"/>
+                                <Button Content="Choose Color" Click="ChooseArrowColor_Click" Padding="10,5"/>
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+                
+                <!-- Preview Section -->
+                <Border Background="White" 
+                        Padding="15" 
+                        Margin="0,0,0,0" 
+                        CornerRadius="5"
+                        BorderBrush="#E0E0E0"
+                        BorderThickness="1">
+                    <StackPanel>
+                        <TextBlock Text="Preview" 
+                                   FontSize="16" 
+                                   FontWeight="Bold" 
+                                   Margin="0,0,0,15"/>
+                        
+                        <Canvas Width="420" Height="100" Background="#FAFAFA">
+                            <!-- Sample task bars -->
+                            <Border x:Name="PreviewBar1" 
+                                    Canvas.Left="20" 
+                                    Canvas.Top="20" 
+                                    Width="100" 
+                                    Height="24" 
+                                    CornerRadius="4">
+                                <TextBlock x:Name="PreviewText1" 
+                                           Text="Phase 1 Task" 
+                                           Foreground="White" 
+                                           VerticalAlignment="Center" 
+                                           Padding="5,0"/>
+                            </Border>
+                            
+                            <Border x:Name="PreviewBar2" 
+                                    Canvas.Left="180" 
+                                    Canvas.Top="20" 
+                                    Width="100" 
+                                    Height="24" 
+                                    CornerRadius="4">
+                                <TextBlock x:Name="PreviewText2" 
+                                           Text="Phase 2 Task" 
+                                           Foreground="White" 
+                                           VerticalAlignment="Center" 
+                                           Padding="5,0"/>
+                            </Border>
+                            
+                            <!-- Sample arrow -->
+                            <Line x:Name="PreviewArrow" 
+                                  X1="125" Y1="32" 
+                                  X2="175" Y2="32" 
+                                  StrokeThickness="1.5"/>
+                            <Polygon x:Name="PreviewArrowHead"
+                                     Points="175,32 170,29 170,35"/>
+                        </Canvas>
+                    </StackPanel>
+                </Border>
+                
+            </StackPanel>
+        </ScrollViewer>
+        
+        <!-- Footer Buttons -->
+        <Border Grid.Row="2" Background="White" BorderBrush="#E0E0E0" BorderThickness="0,1,0,0" Padding="20,10">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Content="Reset to Defaults" 
+                        Click="ResetDefaults_Click" 
+                        Padding="15,8" 
+                        Margin="0,0,10,0"
+                        Background="#95A5A6"
+                        Foreground="White"
+                        BorderThickness="0"/>
+                <Button Content="Cancel" 
+                        Click="Cancel_Click" 
+                        Padding="15,8" 
+                        Margin="0,0,10,0"
+                        Background="#E74C3C"
+                        Foreground="White"
+                        BorderThickness="0"/>
+                <Button Content="Apply" 
+                        Click="Apply_Click" 
+                        Padding="15,8"
+                        Background="#27AE60"
+                        Foreground="White"
+                        BorderThickness="0"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>

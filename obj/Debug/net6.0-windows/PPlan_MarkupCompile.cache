@@ -4,17 +4,17 @@
 winexe
 C#
 .cs
-C:\Users\sodhi\source\repos\PPlan\PPlan\obj\Debug\net6.0-windows\
-ProjectPlanViewer
+c:\Users\sodhi\source\repos\PPlan\PPlan\obj\Debug\net6.0-windows\
+PPlan
 none
 false
 TRACE;DEBUG;NET;NET6_0;NETCOREAPP;WINDOWS;WINDOWS7_0;NET5_0_OR_GREATER;NET6_0_OR_GREATER;NETCOREAPP3_0_OR_GREATER;NETCOREAPP3_1_OR_GREATER;WINDOWS7_0_OR_GREATER
-C:\Users\sodhi\source\repos\PPlan\PPlan\App.xaml
-11407045341
+c:\Users\sodhi\source\repos\PPlan\PPlan\App.xaml
+2656897837
 
-3-1233169557
-194-1992913860
-MainWindow.xaml;
+51455279542
+203435865025
+MainWindow.xaml;StyleMenuWindow.xaml;
 
 False
 

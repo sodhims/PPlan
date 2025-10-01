@@ -29,15 +29,18 @@ namespace ProjectPlanViewer
         // Critical path tracking
         private HashSet<int> criticalPathTaskIds = new HashSet<int>();
         
+        // Style settings
+        private StyleSettings styleSettings = StyleSettings.GetDefaults();
+        
         // For drag and drop - task bars
-        private Border draggedTaskBar;
-        private ProjectTask draggedTask;
+        private Border? draggedTaskBar;
+        private ProjectTask? draggedTask;
         private Point dragStartPoint;
         private double originalLeft;
 
         // For milestone drag and drop
-        private System.Windows.Shapes.Path draggedMilestone;
-        private ProjectTask draggedMilestoneTask;
+        private System.Windows.Shapes.Path? draggedMilestone;
+        private ProjectTask? draggedMilestoneTask;
         private Point milestoneDragStartPoint;
         private double milestoneOriginalLeft;
 
@@ -69,6 +72,57 @@ namespace ProjectPlanViewer
             {
                 LoadProjectPlan(openFileDialog.FileName);
             }
+        }
+
+        private void OpenStyleMenu_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                // Debug: check current font BEFORE opening menu
+                System.Diagnostics.Debug.WriteLine($"BEFORE opening menu - Font: {styleSettings.TaskFontFamily.Source}");
+                
+                var styleMenu = new StyleMenuWindow(styleSettings)
+                {
+                    Owner = this
+                };
+                
+                if (styleMenu.ShowDialog() == true)
+                {
+                    styleSettings = styleMenu.Settings;
+                    
+                    // Debug: check font AFTER closing menu
+                    System.Diagnostics.Debug.WriteLine($"AFTER closing menu - Font: {styleSettings.TaskFontFamily.Source}");
+                    
+                    UpdateResourceColors();
+                    
+                    if (tasks.Count > 0)
+                    {
+                        DetermineTaskProperties();
+                        RenderGanttChart();
+                        StatusText.Text = $"Styles applied: {styleSettings.DependencyLineStyle}, {styleSettings.DependencyLineThickness}px";
+                    }
+                    else
+                    {
+                        StatusText.Text = "Styles saved - will apply when CSV is loaded";
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error: {ex.Message}\n\n{ex.StackTrace}", 
+                                "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                StatusText.Text = "Error opening style menu";
+            }
+        }
+
+        private void UpdateResourceColors()
+        {
+            Resources["Phase1Color"] = styleSettings.Phase1Color;
+            Resources["Phase2Color"] = styleSettings.Phase2Color;
+            Resources["Phase3Color"] = styleSettings.Phase3Color;
+            Resources["CriticalPathColor"] = styleSettings.CriticalPathColor;
+            Resources["DependencyLineColor"] = styleSettings.DependencyLineColor;
+            Resources["CriticalPathDependencyColor"] = styleSettings.CriticalPathDependencyColor;
         }
 
         private void LoadProjectPlan(string filePath)
@@ -183,13 +237,13 @@ namespace ProjectPlanViewer
                 task.IsMilestone = task.Duration == 0;
 
                 if (wbs.StartsWith("1."))
-                    task.PhaseColor = (SolidColorBrush)FindResource("Phase1Color");
+                    task.PhaseColor = new SolidColorBrush(styleSettings.Phase1Color.Color);
                 else if (wbs.StartsWith("2."))
-                    task.PhaseColor = (SolidColorBrush)FindResource("Phase2Color");
+                    task.PhaseColor = new SolidColorBrush(styleSettings.Phase2Color.Color);
                 else if (wbs.StartsWith("3."))
-                    task.PhaseColor = (SolidColorBrush)FindResource("Phase3Color");
+                    task.PhaseColor = new SolidColorBrush(styleSettings.Phase3Color.Color);
                 else
-                    task.PhaseColor = (SolidColorBrush)FindResource("Phase1Color");
+                    task.PhaseColor = new SolidColorBrush(styleSettings.Phase1Color.Color);
 
                 task.RowBackground = (tasks.IndexOf(task) % 2 == 0) 
                     ? new SolidColorBrush(Color.FromRgb(255, 255, 255))
@@ -582,7 +636,7 @@ namespace ProjectPlanViewer
         {
             // Use critical path color if task is on critical path
             SolidColorBrush barColor = task.IsOnCriticalPath 
-                ? (SolidColorBrush)FindResource("CriticalPathColor")
+                ? styleSettings.CriticalPathColor
                 : task.PhaseColor;
 
             var taskBar = new Border
@@ -607,7 +661,8 @@ namespace ProjectPlanViewer
             var label = new TextBlock
             {
                 Text = task.TaskName,
-                FontSize = 10,
+                FontSize = styleSettings.TaskFontSize,
+                FontFamily = styleSettings.TaskFontFamily,
                 Foreground = Brushes.White,
                 VerticalAlignment = VerticalAlignment.Center,
                 Padding = new Thickness(5, 0, 5, 0),
@@ -641,7 +696,15 @@ namespace ProjectPlanViewer
         private void TaskBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             draggedTaskBar = sender as Border;
-            draggedTask = draggedTaskBar.Tag as ProjectTask;
+            draggedTask = draggedTaskBar?.Tag as ProjectTask;
+            
+            if (draggedTask != null)
+            {
+                // Show task info in status bar
+                string criticalInfo = draggedTask.IsOnCriticalPath ? " [CRITICAL PATH]" : $" (Float: {draggedTask.TotalFloat} days)";
+                StatusText.Text = $"Task: {draggedTask.TaskName} | Duration: {draggedTask.Duration} days | {draggedTask.Start:MMM dd} - {draggedTask.Finish:MMM dd}{criticalInfo}";
+            }
+            
             dragStartPoint = e.GetPosition(TimelineCanvas);
             originalLeft = Canvas.GetLeft(draggedTaskBar);
             
@@ -701,7 +764,7 @@ namespace ProjectPlanViewer
         private void DrawMilestone(double x, double y, ProjectTask task)
         {
             var fillBrush = task.IsOnCriticalPath 
-                ? (SolidColorBrush)FindResource("CriticalPathColor")
+                ? styleSettings.CriticalPathColor
                 : (SolidColorBrush)FindResource("MilestoneColor");
 
             var strokeBrush = task.IsOnCriticalPath
@@ -740,7 +803,8 @@ namespace ProjectPlanViewer
             var label = new TextBlock
             {
                 Text = task.TaskName,
-                FontSize = 9,
+                FontSize = styleSettings.TaskFontSize - 1,
+                FontFamily = styleSettings.TaskFontFamily,
                 Foreground = new SolidColorBrush(Color.FromRgb(44, 62, 80)),
                 FontWeight = task.IsOnCriticalPath ? FontWeights.Bold : FontWeights.Bold,
                 IsHitTestVisible = false
@@ -763,7 +827,15 @@ namespace ProjectPlanViewer
         private void Milestone_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             draggedMilestone = sender as System.Windows.Shapes.Path;
-            draggedMilestoneTask = draggedMilestone.Tag as ProjectTask;
+            draggedMilestoneTask = draggedMilestone?.Tag as ProjectTask;
+            
+            if (draggedMilestoneTask != null)
+            {
+                // Show milestone info in status bar
+                string criticalInfo = draggedMilestoneTask.IsOnCriticalPath ? " [CRITICAL MILESTONE]" : $" (Float: {draggedMilestoneTask.TotalFloat} days)";
+                StatusText.Text = $"Milestone: {draggedMilestoneTask.TaskName} | Date: {draggedMilestoneTask.Start:MMM dd, yyyy}{criticalInfo}";
+            }
+            
             milestoneDragStartPoint = e.GetPosition(TimelineCanvas);
             milestoneOriginalLeft = Canvas.GetLeft(draggedMilestone) + 12;
             
@@ -822,6 +894,7 @@ namespace ProjectPlanViewer
 
         private void DrawDependencies()
         {
+            int arrowCount = 0;
             foreach (var task in tasks)
             {
                 if (task.Predecessors != null && task.Predecessors.Count > 0)
@@ -832,10 +905,14 @@ namespace ProjectPlanViewer
                         if (predecessor != null)
                         {
                             DrawDependencyLine(predecessor, task);
+                            arrowCount++;
                         }
                     }
                 }
             }
+            
+            // Debug: verify we're drawing arrows with current style
+            System.Diagnostics.Debug.WriteLine($"Drew {arrowCount} arrows with style: {styleSettings.DependencyLineStyle}, thickness: {styleSettings.DependencyLineThickness}");
         }
 
         private void RedrawDependencies()
@@ -888,14 +965,45 @@ namespace ProjectPlanViewer
             var pathGeometry = new PathGeometry();
             pathGeometry.Figures.Add(pathFigure);
 
+            // Determine stroke dash array based on style settings
+            DoubleCollection? dashArray = null;
+            
+            // Critical path arrows always stay SOLID regardless of settings for visual distinction
+            if (isCriticalDependency)
+            {
+                dashArray = null; // Solid
+            }
+            else
+            {
+                // Non-critical arrows use the user's chosen style
+                switch (styleSettings.DependencyLineStyle)
+                {
+                    case DependencyLineStyle.Dashed:
+                        dashArray = new DoubleCollection { 4, 2 };
+                        break;
+                    case DependencyLineStyle.Solid:
+                        dashArray = null;
+                        break;
+                    case DependencyLineStyle.Dotted:
+                        dashArray = new DoubleCollection { 1, 2 };
+                        break;
+                    case DependencyLineStyle.DashDot:
+                        dashArray = new DoubleCollection { 4, 2, 1, 2 };
+                        break;
+                }
+            }
+            
+            // Debug the actual rendering
+            System.Diagnostics.Debug.WriteLine($"Drawing arrow: Style={styleSettings.DependencyLineStyle}, isCritical={isCriticalDependency}, Color={styleSettings.DependencyLineColor.Color}, dashArray={(dashArray == null ? "null/solid" : string.Join(",", dashArray))}");
+
             var dependencyPath = new System.Windows.Shapes.Path
             {
                 Data = pathGeometry,
                 Stroke = isCriticalDependency 
-                    ? (SolidColorBrush)FindResource("CriticalPathDependencyColor")
-                    : (SolidColorBrush)FindResource("DependencyLineColor"),
-                StrokeThickness = isCriticalDependency ? 2 : 1.5,
-                StrokeDashArray = isCriticalDependency ? null : new DoubleCollection { 4, 2 },
+                    ? new SolidColorBrush(styleSettings.CriticalPathDependencyColor.Color)
+                    : new SolidColorBrush(styleSettings.DependencyLineColor.Color),
+                StrokeThickness = isCriticalDependency ? styleSettings.DependencyLineThickness + 0.5 : styleSettings.DependencyLineThickness,
+                StrokeDashArray = dashArray,
                 Tag = "dependency"
             };
 
@@ -912,8 +1020,8 @@ namespace ProjectPlanViewer
                     new Point(toX - 8, toY + 4)
                 },
                 Fill = isCriticalDependency 
-                    ? (SolidColorBrush)FindResource("CriticalPathDependencyColor")
-                    : (SolidColorBrush)FindResource("DependencyLineColor"),
+                    ? new SolidColorBrush(styleSettings.CriticalPathDependencyColor.Color)
+                    : new SolidColorBrush(styleSettings.DependencyLineColor.Color),
                 Tag = "dependency"
             };
 
@@ -953,19 +1061,39 @@ namespace ProjectPlanViewer
 
         private void ZoomIn_Click(object sender, RoutedEventArgs e)
         {
-            double newZoom = Math.Min(3.0, ZoomSlider.Value + 0.5);
+            double increment = ZoomSlider.Value < 1 ? 0.25 : 0.5;
+            double newZoom = Math.Min(5.0, ZoomSlider.Value + increment);
             ZoomSlider.Value = newZoom;
         }
 
         private void ZoomOut_Click(object sender, RoutedEventArgs e)
         {
-            double newZoom = Math.Max(0.5, ZoomSlider.Value - 0.5);
+            double increment = ZoomSlider.Value <= 1 ? 0.25 : 0.5;
+            double newZoom = Math.Max(0.25, ZoomSlider.Value - increment);
             ZoomSlider.Value = newZoom;
         }
 
         private void ZoomReset_Click(object sender, RoutedEventArgs e)
         {
             ZoomSlider.Value = 1.0;
+        }
+
+        private void ZoomFit_Click(object sender, RoutedEventArgs e)
+        {
+            if (tasks.Count == 0) return;
+            
+            // Calculate zoom level to fit entire timeline in view
+            int totalDays = (projectEndDate - projectStartDate).Days + 1;
+            double availableWidth = GanttScrollViewer.ActualWidth - 400; // Subtract task list width
+            double requiredWidth = totalDays * baseDayWidth;
+            
+            if (requiredWidth > 0)
+            {
+                double fitZoom = availableWidth / requiredWidth;
+                fitZoom = Math.Max(0.25, Math.Min(5.0, fitZoom)); // Clamp to zoom range
+                ZoomSlider.Value = fitZoom;
+                StatusText.Text = $"Zoomed to fit: {(int)(fitZoom * 100)}%";
+            }
         }
 
         private void ApplyZoom(double zoomLevel)
@@ -982,8 +1110,8 @@ namespace ProjectPlanViewer
     public class ProjectTask : INotifyPropertyChanged
     {
         private int id;
-        private string wbs;
-        private string taskName;
+        private string wbs = "";
+        private string taskName = "";
 
         public int ID 
         { 
@@ -1018,12 +1146,12 @@ namespace ProjectPlanViewer
         public DateTime Start { get; set; }
         public DateTime Finish { get; set; }
         public int Duration { get; set; }
-        public List<int> Predecessors { get; set; }
+        public List<int> Predecessors { get; set; } = new List<int>();
         
         public int IndentLevel { get; set; }
         public bool IsMilestone { get; set; }
-        public SolidColorBrush PhaseColor { get; set; }
-        public SolidColorBrush RowBackground { get; set; }
+        public SolidColorBrush PhaseColor { get; set; } = new SolidColorBrush(Colors.Blue);
+        public SolidColorBrush RowBackground { get; set; } = new SolidColorBrush(Colors.White);
         
         // Critical Path Analysis properties
         public DateTime EarlyStart { get; set; }
@@ -1036,7 +1164,7 @@ namespace ProjectPlanViewer
         public Thickness IndentMargin => new Thickness(IndentLevel * 20, 0, 0, 0);
         public FontWeight FontWeight => IndentLevel == 0 ? FontWeights.Bold : FontWeights.Normal;
 
-        public event PropertyChangedEventHandler PropertyChanged;
+        public event PropertyChangedEventHandler? PropertyChanged;
         
         protected void OnPropertyChanged(string propertyName)
         {

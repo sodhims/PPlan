@@ -17,8 +17,8 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="70"/>
             <RowDefinition Height="50"/>
-            <RowDefinition Height="50"/>
-            <RowDefinition Height="580"/>
+            <RowDefinition Height="60"/>
+            <RowDefinition Height="570"/>
             <RowDefinition Height="50"/>
         </Grid.RowDefinitions>
         
@@ -29,6 +29,7 @@
                     <TextBlock x:Name="ProjectInfoText" Text="Ready to load" FontSize="12" Foreground="#BDC3C7" Margin="0,5,0,0"/>
                 </StackPanel>
                 <Button Content="Load CSV" Click="LoadCSV_Click" Margin="50,0,0,0" Padding="20,10" Background="#3498DB" Foreground="White" BorderThickness="0" Cursor="Hand"/>
+                <Button Content="⚙ Styles" Click="OpenStyleMenu_Click" Margin="10,0,0,0" Padding="20,10" Background="#9B59B6" Foreground="White" BorderThickness="0" Cursor="Hand"/>
             </StackPanel>
         </Border>
         
@@ -49,15 +50,22 @@
             </StackPanel>
         </Border>
         
-        <Border Grid.Row="2" Background="White" BorderBrush="#E0E0E0" BorderThickness="0,0,0,1" Padding="20,10">
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                <TextBlock Text="Zoom:" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                <Button Content="-" Click="ZoomOut_Click" Width="30" Height="30" Margin="5"/>
-                <Slider x:Name="ZoomSlider" Width="200" Minimum="0.5" Maximum="3" Value="1" VerticalAlignment="Center" ValueChanged="ZoomSlider_ValueChanged"/>
-                <Button Content="+" Click="ZoomIn_Click" Width="30" Height="30" Margin="5"/>
-                <TextBlock x:Name="ZoomPercentText" Text="100%" Width="50" VerticalAlignment="Center" Margin="10,0"/>
-                <Button Content="Reset" Click="ZoomReset_Click" Padding="10,5" Margin="5" Background="#3498DB" Foreground="White" BorderThickness="0"/>
-            </StackPanel>
+        <Border Grid.Row="2" Background="White" BorderBrush="#E0E0E0" BorderThickness="0,0,0,1" Padding="20,15">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                
+                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
+                    <TextBlock Text="Zoom:" VerticalAlignment="Center" Margin="0,0,10,0" FontSize="13"/>
+                    <Button Content="-" Click="ZoomOut_Click" Width="35" Height="35" Margin="5" FontSize="16" FontWeight="Bold"/>
+                    <Slider x:Name="ZoomSlider" Width="250" Minimum="0.25" Maximum="5" Value="1" VerticalAlignment="Center" ValueChanged="ZoomSlider_ValueChanged" TickFrequency="0.25"/>
+                    <Button Content="+" Click="ZoomIn_Click" Width="35" Height="35" Margin="5" FontSize="16" FontWeight="Bold"/>
+                    <TextBlock x:Name="ZoomPercentText" Text="100%" Width="60" VerticalAlignment="Center" Margin="10,0" FontSize="13" FontWeight="Bold" TextAlignment="Center"/>
+                    <Button Content="Reset" Click="ZoomReset_Click" Padding="12,8" Margin="5,5,0,5" Background="#3498DB" Foreground="White" BorderThickness="0" FontSize="12"/>
+                </StackPanel>
+            </Grid>
         </Border>
         
         <ScrollViewer Grid.Row="3" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" x:Name="GanttScrollViewer">
