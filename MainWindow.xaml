@@ -125,58 +125,54 @@
             </Border>
             
             <!-- Task list (scrolls vertically only) -->
-            <ScrollViewer Grid.Row="1" Grid.Column="0" 
-                         x:Name="TaskListScroll"
-                         HorizontalScrollBarVisibility="Disabled" 
-                         VerticalScrollBarVisibility="Hidden">
-                <Border BorderBrush="#E0E0E0" BorderThickness="0,0,1,0" Background="#FAFAFA">
-                    <ItemsControl x:Name="TaskListItems">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Border BorderBrush="#E0E0E0" 
-                                       BorderThickness="0,0,0,1" 
-                                       Height="40"
-                                       Background="{Binding RowBackground}">
-                                    <Grid Width="400">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="60"/>
-                                            <ColumnDefinition Width="100"/>
-                                            <ColumnDefinition Width="240"/>
-                                        </Grid.ColumnDefinitions>
-                                        
-                                        <TextBox Grid.Column="0" 
-                                                 Text="{Binding ID, UpdateSourceTrigger=PropertyChanged}" 
-                                                 VerticalContentAlignment="Center"
-                                                 TextAlignment="Center"
-                                                 BorderThickness="0"
-                                                 Background="Transparent"
-                                                 Padding="5,0"
-                                                 FontSize="12"/>
-                                        
-                                        <TextBox Grid.Column="1" 
-                                                 Text="{Binding WBS, UpdateSourceTrigger=PropertyChanged}" 
-                                                 VerticalContentAlignment="Center"
-                                                 BorderThickness="0"
-                                                 Background="Transparent"
-                                                 Padding="5,0"
-                                                 FontSize="12"/>
-                                        
-                                        <TextBox Grid.Column="2" 
-                                                 Text="{Binding TaskName, UpdateSourceTrigger=PropertyChanged}" 
-                                                 VerticalContentAlignment="Center"
-                                                 BorderThickness="0"
-                                                 Background="Transparent"
-                                                 Padding="{Binding IndentMargin}"
-                                                 FontWeight="{Binding FontWeight}"
-                                                 FontSize="12"
-                                                 TextChanged="TaskName_TextChanged"/>
-                                    </Grid>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </Border>
-            </ScrollViewer>
+<!-- Task list (scrolls vertically only) -->
+			<ScrollViewer Grid.Row="1" Grid.Column="0" 
+						 x:Name="TaskListScroll"
+						 HorizontalScrollBarVisibility="Disabled" 
+						 VerticalScrollBarVisibility="Hidden">
+				<Border BorderBrush="#E0E0E0" BorderThickness="0,0,1,0" Background="#FAFAFA">
+					<ItemsControl x:Name="TaskListItems">
+						<ItemsControl.ItemTemplate>
+							<DataTemplate>
+								<Grid Height="{Binding TaskListRowHeight, RelativeSource={RelativeSource AncestorType=Window}}">
+									<Grid.ColumnDefinitions>
+										<ColumnDefinition Width="60"/>
+										<ColumnDefinition Width="100"/>
+										<ColumnDefinition Width="*"/>
+									</Grid.ColumnDefinitions>
+									
+									<TextBox Grid.Column="0" 
+											 Text="{Binding ID, UpdateSourceTrigger=PropertyChanged}" 
+											 VerticalContentAlignment="Center"
+											 TextAlignment="Center"
+											 BorderThickness="0"
+											 Background="Transparent"
+											 Padding="5,0"
+											 FontSize="12"/>
+									
+									<TextBox Grid.Column="1" 
+											 Text="{Binding WBS, UpdateSourceTrigger=PropertyChanged}" 
+											 VerticalContentAlignment="Center"
+											 BorderThickness="0"
+											 Background="Transparent"
+											 Padding="5,0"
+											 FontSize="12"/>
+									
+									<TextBox Grid.Column="2" 
+											 Text="{Binding TaskName, UpdateSourceTrigger=PropertyChanged}" 
+											 VerticalContentAlignment="Center"
+											 BorderThickness="0"
+											 Background="Transparent"
+											 Padding="{Binding IndentMargin}"
+											 FontWeight="{Binding FontWeight}"
+											 FontSize="12"
+											 TextChanged="TaskName_TextChanged"/>
+								</Grid>
+							</DataTemplate>
+						</ItemsControl.ItemTemplate>
+					</ItemsControl>
+				</Border>
+			</ScrollViewer>
             
             <!-- Timeline content (scrolls both directions) -->
             <ScrollViewer Grid.Row="1" Grid.Column="1" 

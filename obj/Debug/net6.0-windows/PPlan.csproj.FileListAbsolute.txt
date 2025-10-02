@@ -1,10 +1,6 @@
-c:\Users\sodhi\source\repos\PPlan\PPlan\bin\Debug\net6.0-windows\PPlan.exe
-c:\Users\sodhi\source\repos\PPlan\PPlan\bin\Debug\net6.0-windows\PPlan.deps.json
-c:\Users\sodhi\source\repos\PPlan\PPlan\bin\Debug\net6.0-windows\PPlan.runtimeconfig.json
-c:\Users\sodhi\source\repos\PPlan\PPlan\bin\Debug\net6.0-windows\PPlan.dll
-c:\Users\sodhi\source\repos\PPlan\PPlan\bin\Debug\net6.0-windows\PPlan.pdb
 c:\Users\sodhi\source\repos\PPlan\PPlan\obj\Debug\net6.0-windows\MainWindow.baml
 c:\Users\sodhi\source\repos\PPlan\PPlan\obj\Debug\net6.0-windows\StyleMenuWindow.baml
+c:\Users\sodhi\source\repos\PPlan\PPlan\obj\Debug\net6.0-windows\App.baml
 c:\Users\sodhi\source\repos\PPlan\PPlan\obj\Debug\net6.0-windows\MainWindow.g.cs
 c:\Users\sodhi\source\repos\PPlan\PPlan\obj\Debug\net6.0-windows\StyleMenuWindow.g.cs
 c:\Users\sodhi\source\repos\PPlan\PPlan\obj\Debug\net6.0-windows\App.g.cs
@@ -15,9 +11,13 @@ c:\Users\sodhi\source\repos\PPlan\PPlan\obj\Debug\net6.0-windows\PPlan.AssemblyI
 c:\Users\sodhi\source\repos\PPlan\PPlan\obj\Debug\net6.0-windows\PPlan.AssemblyInfo.cs
 c:\Users\sodhi\source\repos\PPlan\PPlan\obj\Debug\net6.0-windows\PPlan.csproj.CoreCompileInputs.cache
 c:\Users\sodhi\source\repos\PPlan\PPlan\obj\Debug\net6.0-windows\PPlan.sourcelink.json
+c:\Users\sodhi\source\repos\PPlan\PPlan\bin\Debug\net6.0-windows\PPlan.exe
+c:\Users\sodhi\source\repos\PPlan\PPlan\bin\Debug\net6.0-windows\PPlan.deps.json
+c:\Users\sodhi\source\repos\PPlan\PPlan\bin\Debug\net6.0-windows\PPlan.runtimeconfig.json
+c:\Users\sodhi\source\repos\PPlan\PPlan\bin\Debug\net6.0-windows\PPlan.dll
+c:\Users\sodhi\source\repos\PPlan\PPlan\bin\Debug\net6.0-windows\PPlan.pdb
 c:\Users\sodhi\source\repos\PPlan\PPlan\obj\Debug\net6.0-windows\PPlan.dll
 c:\Users\sodhi\source\repos\PPlan\PPlan\obj\Debug\net6.0-windows\refint\PPlan.dll
 c:\Users\sodhi\source\repos\PPlan\PPlan\obj\Debug\net6.0-windows\PPlan.pdb
 c:\Users\sodhi\source\repos\PPlan\PPlan\obj\Debug\net6.0-windows\PPlan.genruntimeconfig.cache
 c:\Users\sodhi\source\repos\PPlan\PPlan\obj\Debug\net6.0-windows\ref\PPlan.dll
-c:\Users\sodhi\source\repos\PPlan\PPlan\obj\Debug\net6.0-windows\App.baml
