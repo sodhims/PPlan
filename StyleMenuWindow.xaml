@@ -256,21 +256,24 @@
         <!-- Footer Buttons -->
         <Border Grid.Row="2" Background="White" BorderBrush="#E0E0E0" BorderThickness="0,1,0,0" Padding="20,10">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                <Button Content="Reset to Defaults" 
+                <Button Style="{StaticResource PillButton}"
+						Content="Reset to Defaults" 
                         Click="ResetDefaults_Click" 
                         Padding="15,8" 
                         Margin="0,0,10,0"
                         Background="#95A5A6"
                         Foreground="White"
                         BorderThickness="0"/>
-                <Button Content="Cancel" 
+                <Button Style="{StaticResource PillButton}"
+						Content="Cancel" 
                         Click="Cancel_Click" 
                         Padding="15,8" 
                         Margin="0,0,10,0"
                         Background="#E74C3C"
                         Foreground="White"
                         BorderThickness="0"/>
-                <Button Content="Apply" 
+                <Button Style="{StaticResource PillButton}"
+						Content="Apply" 
                         Click="Apply_Click" 
                         Padding="15,8"
                         Background="#27AE60"

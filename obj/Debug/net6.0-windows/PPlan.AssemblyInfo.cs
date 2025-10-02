@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("PPlan")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+a548546ccb5b717696b732f9c78f4f7f812c06b9")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+c7e07e813a91f11642845733946aabbcc2c0d406")]
 [assembly: System.Reflection.AssemblyProductAttribute("PPlan")]
 [assembly: System.Reflection.AssemblyTitleAttribute("PPlan")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

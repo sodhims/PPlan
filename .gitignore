@@ -1,0 +1,129 @@
+############################
+# OS cruft
+############################
+# macOS
+.DS_Store
+.AppleDouble
+.apdisk
+# Windows
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+############################
+# Editors / IDEs
+############################
+# Visual Studio / VS for Windows
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.rsuser
+
+# VS Code (keep recommended project files)
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# JetBrains
+.idea/
+*.iml
+
+############################
+# .NET / WPF / C#
+############################
+bin/
+obj/
+[Bb]uild/
+[Ll]og/
+[Ll]ogs/
+artifacts/
+TestResults/
+*.VisualState.xml
+*.cache
+*.pdb
+*.svclog
+*.vsp
+*.vspx
+# NuGet
+*.nupkg
+*.snupkg
+# Old package folder (if not using PackageReference)
+packages/
+# User-specific settings
+*.DotSettings.user
+# Temporary publish outputs
+**/Properties/PublishProfiles/*.pubxml.user
+# SQLite / local db tooling
+*.dbmdl
+*.opendb
+*.mdf
+*.ldf
+
+############################
+# Python
+############################
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+.eggs/
+dist/
+build/
+pip-wheel-metadata/
+.venv/
+venv/
+env/
+.env
+.env.*
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.pyre/
+.pytype/
+.ipynb_checkpoints/
+
+############################
+# Node / tooling (if present)
+############################
+node_modules/
+.npm/
+.yarn/
+.pnp.*
+# Typical web build output
+dist/
+build/
+
+############################
+# Coverage / reports / analysis
+############################
+coverage/
+*.coverage
+*.coverage.*
+*.lcov
+*.trx
+
+############################
+# Temp files
+############################
+*.log
+*.tmp
+tmp/
+temp/
+~$*
+
+############################
+# Secrets / keys / certs
+############################
+# Keep secrets out of Git; store via env vars, GitHub Secrets, or a vault
+*.pfx
+*.p12
+*.pem
+*.key
+*.snk
+secrets.*

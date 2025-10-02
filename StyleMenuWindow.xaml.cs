@@ -12,11 +12,14 @@ namespace ProjectPlanViewer
 
         public StyleMenuWindow(StyleSettings currentSettings)
         {
-            isLoading = true;
             Settings = currentSettings.Clone();
+            
             InitializeComponent();
+            
+            isLoading = true;
             LoadSettings();
             isLoading = false;
+            
             UpdatePreview();
         }
 
@@ -33,38 +36,33 @@ namespace ProjectPlanViewer
             FontSizeSlider.Value = Settings.TaskFontSize;
             FontSizeLabel.Text = $"{Settings.TaskFontSize} pt";
             
-            // Find and select matching font family - BE MORE FLEXIBLE with matching
+            // Find and select matching font family
             string currentFont = Settings.TaskFontFamily.Source;
             bool fontFound = false;
             
             foreach (ComboBoxItem item in FontFamilyCombo.Items)
             {
                 string itemFont = item.Content.ToString() ?? "";
-                // Try exact match first, then case-insensitive match
+                
                 if (itemFont.Equals(currentFont, StringComparison.OrdinalIgnoreCase))
                 {
                     FontFamilyCombo.SelectedItem = item;
                     fontFound = true;
-                    System.Diagnostics.Debug.WriteLine($"Font matched: '{currentFont}' to '{itemFont}'");
                     break;
                 }
             }
             
             // If font not found, select first item as fallback
-            if (!fontFound)
+            if (!fontFound && FontFamilyCombo.Items.Count > 0)
             {
-                System.Diagnostics.Debug.WriteLine($"Font NOT found: '{currentFont}', using default");
-                if (FontFamilyCombo.Items.Count > 0)
-                {
-                    FontFamilyCombo.SelectedIndex = 0;
-                }
+                FontFamilyCombo.SelectedIndex = 0;
             }
 
             // Load arrow settings
             ArrowThicknessSlider.Value = Settings.DependencyLineThickness;
             ArrowThicknessLabel.Text = $"{Settings.DependencyLineThickness:F1} px";
             
-            // Select the correct arrow style - MAKE SURE this matches Settings
+            // Select the correct arrow style
             ArrowStyleCombo.SelectedIndex = Settings.DependencyLineStyle switch
             {
                 DependencyLineStyle.Dashed => 0,
@@ -152,6 +150,8 @@ namespace ProjectPlanViewer
 
         private void FontFamily_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
+            if (isLoading) return; // Ignore during initial load
+            
             if (FontFamilyCombo.SelectedItem is ComboBoxItem selected)
             {
                 Settings.TaskFontFamily = new FontFamily(selected.Content.ToString());
@@ -161,16 +161,17 @@ namespace ProjectPlanViewer
 
         private void FontSize_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
-            if (FontSizeLabel != null)
-            {
-                Settings.TaskFontSize = e.NewValue;
-                FontSizeLabel.Text = $"{e.NewValue} pt";
-                UpdatePreview();
-            }
+            if (isLoading || FontSizeLabel == null) return;
+            
+            Settings.TaskFontSize = e.NewValue;
+            FontSizeLabel.Text = $"{e.NewValue} pt";
+            UpdatePreview();
         }
 
         private void ArrowStyle_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
+            if (isLoading) return;
+            
             switch (ArrowStyleCombo.SelectedIndex)
             {
                 case 0:
@@ -191,12 +192,11 @@ namespace ProjectPlanViewer
 
         private void ArrowThickness_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
-            if (ArrowThicknessLabel != null)
-            {
-                Settings.DependencyLineThickness = e.NewValue;
-                ArrowThicknessLabel.Text = $"{e.NewValue} px";
-                UpdatePreview();
-            }
+            if (isLoading || ArrowThicknessLabel == null) return;
+            
+            Settings.DependencyLineThickness = e.NewValue;
+            ArrowThicknessLabel.Text = $"{e.NewValue} px";
+            UpdatePreview();
         }
 
         private void UpdatePreview()

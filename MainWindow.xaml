@@ -11,14 +11,31 @@
         <SolidColorBrush x:Key="DependencyLineColor" Color="#95A5A6"/>
         <SolidColorBrush x:Key="CriticalPathColor" Color="#E74C3C"/>
         <SolidColorBrush x:Key="CriticalPathDependencyColor" Color="#C0392B"/>
+        
+        <!-- PillButton Style for rounded buttons -->
+        <Style x:Key="PillButton" TargetType="Button">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" 
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="15"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
     
     <Grid Background="#F5F5F5">
         <Grid.RowDefinitions>
             <RowDefinition Height="70"/>
             <RowDefinition Height="50"/>
-            <RowDefinition Height="60"/>
-            <RowDefinition Height="570"/>
+            <RowDefinition Height="80"/>
+            <RowDefinition Height="550"/>
             <RowDefinition Height="50"/>
         </Grid.RowDefinitions>
         
@@ -28,8 +45,8 @@
                     <TextBlock Text="MES Project Plan" FontSize="24" FontWeight="Bold" Foreground="White"/>
                     <TextBlock x:Name="ProjectInfoText" Text="Ready to load" FontSize="12" Foreground="#BDC3C7" Margin="0,5,0,0"/>
                 </StackPanel>
-                <Button Content="Load CSV" Click="LoadCSV_Click" Margin="50,0,0,0" Padding="20,10" Background="#3498DB" Foreground="White" BorderThickness="0" Cursor="Hand"/>
-                <Button Content="⚙ Styles" Click="OpenStyleMenu_Click" Margin="10,0,0,0" Padding="20,10" Background="#9B59B6" Foreground="White" BorderThickness="0" Cursor="Hand"/>
+                <Button Style="{StaticResource PillButton}" Content="Load CSV" Click="LoadCSV_Click" Margin="50,0,0,0" Padding="20,10" Background="#3498DB" Foreground="White" BorderThickness="0" Cursor="Hand"/>
+                <Button Style="{StaticResource PillButton}" Content="⚙ Styles" Click="OpenStyleMenu_Click" Margin="10,0,0,0" Padding="20,10" Background="#9B59B6" Foreground="White" BorderThickness="0" Cursor="Hand"/>
             </StackPanel>
         </Border>
         
@@ -59,76 +76,117 @@
                 
                 <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
                     <TextBlock Text="Zoom:" VerticalAlignment="Center" Margin="0,0,10,0" FontSize="13"/>
-                    <Button Content="-" Click="ZoomOut_Click" Width="35" Height="35" Margin="5" FontSize="16" FontWeight="Bold"/>
+                    <Button Content="-" Style="{StaticResource PillButton}" 
+                            Background="#2E7DEB"
+                            Foreground="White"
+                            BorderBrush="#2459A6"
+                            BorderThickness="1"
+                            Click="ZoomOut_Click" Width="30" Height="30" Margin="5" FontSize="17" FontWeight="Bold"/>
                     <Slider x:Name="ZoomSlider" Width="250" Minimum="0.25" Maximum="5" Value="1" VerticalAlignment="Center" ValueChanged="ZoomSlider_ValueChanged" TickFrequency="0.25"/>
-                    <Button Content="+" Click="ZoomIn_Click" Width="35" Height="35" Margin="5" FontSize="16" FontWeight="Bold"/>
-                    <TextBlock x:Name="ZoomPercentText" Text="100%" Width="60" VerticalAlignment="Center" Margin="10,0" FontSize="13" FontWeight="Bold" TextAlignment="Center"/>
-                    <Button Content="Reset" Click="ZoomReset_Click" Padding="12,8" Margin="5,5,0,5" Background="#3498DB" Foreground="White" BorderThickness="0" FontSize="12"/>
+                    <Button Content="+" Style="{StaticResource PillButton}" 
+                            Background="#AB2330"
+                            Foreground="White"
+                            BorderBrush="#2459A6"
+                            BorderThickness="1"
+                            Click="ZoomIn_Click" Width="30" Height="30" Margin="5" FontSize="17" FontWeight="Bold"/>
+                    <TextBlock x:Name="ZoomPercentText" Text="Fit" Width="60" VerticalAlignment="Center" Margin="10,0" FontSize="13" FontWeight="Bold" TextAlignment="Center"/>
+                    <Button Content="100%" Style="{StaticResource PillButton}" Click="ZoomReset_Click" Padding="12,8" Margin="5,0" Background="#3498DB" Foreground="White" BorderThickness="0" FontSize="11"/>
                 </StackPanel>
             </Grid>
         </Border>
         
-        <ScrollViewer Grid.Row="3" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" x:Name="GanttScrollViewer">
-            <StackPanel Orientation="Horizontal">
-                <Border Width="400" BorderBrush="#E0E0E0" BorderThickness="0,0,1,0" Background="#FAFAFA">
-                    <StackPanel>
-                        <Border Height="50" Background="#ECF0F1" BorderBrush="#E0E0E0" BorderThickness="0,0,0,1">
-                            <Grid Width="400">
-                                <TextBlock Text="ID" Width="60" HorizontalAlignment="Left" FontWeight="Bold" Padding="10,15"/>
-                                <TextBlock Text="WBS" Width="100" Margin="60,0,0,0" HorizontalAlignment="Left" FontWeight="Bold" Padding="10,15"/>
-                                <TextBlock Text="Task Name" Margin="160,0,0,0" HorizontalAlignment="Left" FontWeight="Bold" Padding="10,15"/>
-                            </Grid>
-                        </Border>
-					<ItemsControl x:Name="TaskListItems">
-						<ItemsControl.ItemTemplate>
-							<DataTemplate>
-								<Border BorderBrush="#E0E0E0" 
-									   BorderThickness="0,0,0,1" 
-									   Height="40"
-									   Background="{Binding RowBackground}">
-									<Grid Width="400">
-										<Grid.ColumnDefinitions>
-											<ColumnDefinition Width="60"/>
-											<ColumnDefinition Width="100"/>
-											<ColumnDefinition Width="240"/>
-										</Grid.ColumnDefinitions>
-										
-										<TextBox Grid.Column="0" 
-												 Text="{Binding ID, UpdateSourceTrigger=PropertyChanged}" 
-												 VerticalContentAlignment="Center"
-												 TextAlignment="Center"
-												 BorderThickness="0"
-												 Background="Transparent"
-												 Padding="5,0"
-												 FontSize="12"/>
-										
-										<TextBox Grid.Column="1" 
-												 Text="{Binding WBS, UpdateSourceTrigger=PropertyChanged}" 
-												 VerticalContentAlignment="Center"
-												 BorderThickness="0"
-												 Background="Transparent"
-												 Padding="5,0"
-												 FontSize="12"/>
-										
-										<TextBox Grid.Column="2" 
-												 Text="{Binding TaskName, UpdateSourceTrigger=PropertyChanged}" 
-												 VerticalContentAlignment="Center"
-												 BorderThickness="0"
-												 Background="Transparent"
-												 Padding="{Binding IndentMargin}"
-												 FontWeight="{Binding FontWeight}"
-												 FontSize="12"
-												 TextChanged="TaskName_TextChanged"/>
-									</Grid>
-								</Border>
-							</DataTemplate>
-						</ItemsControl.ItemTemplate>
-					</ItemsControl>
-                    </StackPanel>
+        <!-- NEW: Grid structure with frozen header -->
+        <Grid Grid.Row="3">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="400"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="50"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+            
+            <!-- Task list header (fixed) -->
+            <Border Grid.Row="0" Grid.Column="0" Background="#ECF0F1" BorderBrush="#E0E0E0" BorderThickness="0,0,1,1">
+                <Grid Width="400">
+                    <TextBlock Text="ID" Width="60" HorizontalAlignment="Left" FontWeight="Bold" Padding="10,15"/>
+                    <TextBlock Text="WBS" Width="100" Margin="60,0,0,0" HorizontalAlignment="Left" FontWeight="Bold" Padding="10,15"/>
+                    <TextBlock Text="Task Name" Margin="160,0,0,0" HorizontalAlignment="Left" FontWeight="Bold" Padding="10,15"/>
+                </Grid>
+            </Border>
+            
+            <!-- Timeline header (fixed, scrolls horizontally only) -->
+            <Border Grid.Row="0" Grid.Column="1" Background="#ECF0F1" BorderBrush="#E0E0E0" BorderThickness="0,0,0,1">
+                <ScrollViewer x:Name="TimelineHeaderScroll" 
+                             HorizontalScrollBarVisibility="Hidden" 
+                             VerticalScrollBarVisibility="Disabled">
+                    <Canvas x:Name="TimelineHeaderCanvas" Height="50"/>
+                </ScrollViewer>
+            </Border>
+            
+            <!-- Task list (scrolls vertically only) -->
+            <ScrollViewer Grid.Row="1" Grid.Column="0" 
+                         x:Name="TaskListScroll"
+                         HorizontalScrollBarVisibility="Disabled" 
+                         VerticalScrollBarVisibility="Hidden">
+                <Border BorderBrush="#E0E0E0" BorderThickness="0,0,1,0" Background="#FAFAFA">
+                    <ItemsControl x:Name="TaskListItems">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border BorderBrush="#E0E0E0" 
+                                       BorderThickness="0,0,0,1" 
+                                       Height="40"
+                                       Background="{Binding RowBackground}">
+                                    <Grid Width="400">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="60"/>
+                                            <ColumnDefinition Width="100"/>
+                                            <ColumnDefinition Width="240"/>
+                                        </Grid.ColumnDefinitions>
+                                        
+                                        <TextBox Grid.Column="0" 
+                                                 Text="{Binding ID, UpdateSourceTrigger=PropertyChanged}" 
+                                                 VerticalContentAlignment="Center"
+                                                 TextAlignment="Center"
+                                                 BorderThickness="0"
+                                                 Background="Transparent"
+                                                 Padding="5,0"
+                                                 FontSize="12"/>
+                                        
+                                        <TextBox Grid.Column="1" 
+                                                 Text="{Binding WBS, UpdateSourceTrigger=PropertyChanged}" 
+                                                 VerticalContentAlignment="Center"
+                                                 BorderThickness="0"
+                                                 Background="Transparent"
+                                                 Padding="5,0"
+                                                 FontSize="12"/>
+                                        
+                                        <TextBox Grid.Column="2" 
+                                                 Text="{Binding TaskName, UpdateSourceTrigger=PropertyChanged}" 
+                                                 VerticalContentAlignment="Center"
+                                                 BorderThickness="0"
+                                                 Background="Transparent"
+                                                 Padding="{Binding IndentMargin}"
+                                                 FontWeight="{Binding FontWeight}"
+                                                 FontSize="12"
+                                                 TextChanged="TaskName_TextChanged"/>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
                 </Border>
-                <Canvas x:Name="TimelineCanvas" Background="White" Width="1600" Height="1500"/>
-            </StackPanel>
-        </ScrollViewer>
+            </ScrollViewer>
+            
+            <!-- Timeline content (scrolls both directions) -->
+            <ScrollViewer Grid.Row="1" Grid.Column="1" 
+                         x:Name="GanttScrollViewer"
+                         HorizontalScrollBarVisibility="Auto" 
+                         VerticalScrollBarVisibility="Auto"
+                         ScrollChanged="TimelineScrollViewer_ScrollChanged">
+                <Canvas x:Name="TimelineCanvas" Background="White"/>
+            </ScrollViewer>
+        </Grid>
         
         <Border Grid.Row="4" Background="#ECF0F1" Padding="20,10">
             <TextBlock x:Name="StatusText" Text="Ready to load project plan" FontSize="11" Foreground="#7F8C8D"/>

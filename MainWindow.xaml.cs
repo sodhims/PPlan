@@ -1,6 +1,6 @@
-﻿using Microsoft.Win32;
-using System;
+﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
 using System.IO;
@@ -10,1066 +10,507 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
+using Microsoft.Win32;
 
-namespace ProjectPlanViewer
+namespace GanttChartApp
 {
     public partial class MainWindow : Window
     {
-        private List<ProjectTask> tasks = new List<ProjectTask>();
-        private DateTime projectStartDate;
-        private DateTime projectEndDate;
-        private const int RowHeight = 40;
-        private const int TimelineHeaderHeight = 50;
-        
-        // For zoom
+        private ObservableCollection<ProjectTask> tasks = new ObservableCollection<ProjectTask>();
+        private DateTime projectStart;
+        private DateTime projectEnd;
+        private const double DayWidth = 20;
         private double currentZoom = 1.0;
-        private int baseDayWidth = 20;
-        private int DayWidth => (int)(baseDayWidth * currentZoom);
+        private double currentRowHeight = 40; // Default row height
+        private const double MIN_ROW_HEIGHT = 25;
+        private const double MAX_ROW_HEIGHT = 80;
+        private const double ROW_HEIGHT_STEP = 5;
         
-        // Critical path tracking
-        private HashSet<int> criticalPathTaskIds = new HashSet<int>();
-        
-        // Style settings
-        private StyleSettings styleSettings = StyleSettings.GetDefaults();
-        
-        // For drag and drop - task bars
-        private Border? draggedTaskBar;
-        private ProjectTask? draggedTask;
         private Point dragStartPoint;
-        private double originalLeft;
-
-        // For milestone drag and drop
-        private System.Windows.Shapes.Path? draggedMilestone;
-        private ProjectTask? draggedMilestoneTask;
-        private Point milestoneDragStartPoint;
-        private double milestoneOriginalLeft;
+        private bool isDragging = false;
+        private ProjectTask draggedTask;
+        private Rectangle draggedRectangle;
 
         public MainWindow()
         {
             InitializeComponent();
+            TaskListView.ItemsSource = tasks;
             
-            if (ZoomSlider != null)
-            {
-                ZoomSlider.Value = 1.0;
-            }
+            // Wire up mouse wheel handler for row height adjustment
+            GanttCanvas.MouseWheel += GanttCanvas_MouseWheel;
             
-            string defaultFile = "mes_project_plan.csv";
-            if (File.Exists(defaultFile))
-            {
-                LoadProjectPlan(defaultFile);
-            }
+            ZoomSlider.ValueChanged += (s, e) => ApplyZoom(e.NewValue);
         }
 
         private void LoadCSV_Click(object sender, RoutedEventArgs e)
         {
             OpenFileDialog openFileDialog = new OpenFileDialog
             {
-                Filter = "CSV files (*.csv)|*.csv|All files (*.*)|*.*",
-                Title = "Select Project Plan CSV File"
+                Filter = "CSV files (*.csv)|*.csv|All files (*.*)|*.*"
             };
 
             if (openFileDialog.ShowDialog() == true)
             {
-                LoadProjectPlan(openFileDialog.FileName);
+                LoadTasksFromCSV(openFileDialog.FileName);
             }
         }
 
-        private void OpenStyleMenu_Click(object sender, RoutedEventArgs e)
+        private void LoadTasksFromCSV(string filePath)
         {
-            try
+            tasks.Clear();
+            var lines = File.ReadAllLines(filePath);
+
+            if (lines.Length < 2) return;
+
+            var headers = lines[0].Split(',');
+            int idIndex = Array.IndexOf(headers, "ID");
+            int wbsIndex = Array.IndexOf(headers, "WBS");
+            int taskNameIndex = Array.IndexOf(headers, "Task Name");
+            int startIndex = Array.IndexOf(headers, "Start");
+            int finishIndex = Array.IndexOf(headers, "Finish");
+            int durationIndex = Array.IndexOf(headers, "Duration");
+            int predecessorsIndex = Array.IndexOf(headers, "Predecessors");
+
+            for (int i = 1; i < lines.Length; i++)
             {
-                // Debug: check current font BEFORE opening menu
-                System.Diagnostics.Debug.WriteLine($"BEFORE opening menu - Font: {styleSettings.TaskFontFamily.Source}");
+                var values = ParseCSVLine(lines[i]);
                 
-                var styleMenu = new StyleMenuWindow(styleSettings)
+                if (values.Length < headers.Length) continue;
+
+                var task = new ProjectTask
                 {
-                    Owner = this
+                    ID = int.Parse(values[idIndex]),
+                    WBS = values[wbsIndex],
+                    TaskName = values[taskNameIndex],
+                    Start = DateTime.Parse(values[startIndex]),
+                    Finish = DateTime.Parse(values[finishIndex]),
+                    Duration = int.Parse(values[durationIndex]),
+                    Predecessors = ParsePredecessors(values[predecessorsIndex])
                 };
+
+                task.IndentLevel = task.WBS.Count(c => c == '.') - 1;
+                task.IsMilestone = task.Duration == 0;
                 
-                if (styleMenu.ShowDialog() == true)
-                {
-                    styleSettings = styleMenu.Settings;
-                    
-                    // Debug: check font AFTER closing menu
-                    System.Diagnostics.Debug.WriteLine($"AFTER closing menu - Font: {styleSettings.TaskFontFamily.Source}");
-                    
-                    UpdateResourceColors();
-                    
-                    if (tasks.Count > 0)
-                    {
-                        DetermineTaskProperties();
-                        RenderGanttChart();
-                        StatusText.Text = $"Styles applied: {styleSettings.DependencyLineStyle}, {styleSettings.DependencyLineThickness}px";
-                    }
-                    else
-                    {
-                        StatusText.Text = "Styles saved - will apply when CSV is loaded";
-                    }
-                }
+                DeterminePhaseColor(task);
+                task.RowBackground = i % 2 == 0 ? 
+                    new SolidColorBrush(Color.FromRgb(248, 248, 248)) : 
+                    new SolidColorBrush(Colors.White);
+
+                tasks.Add(task);
             }
-            catch (Exception ex)
+
+            CalculateCriticalPath();
+            
+            if (tasks.Count > 0)
             {
-                MessageBox.Show($"Error: {ex.Message}\n\n{ex.StackTrace}", 
-                                "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                StatusText.Text = "Error opening style menu";
+                projectStart = tasks.Min(t => t.Start);
+                projectEnd = tasks.Max(t => t.Finish);
             }
-        }
 
-        private void UpdateResourceColors()
-        {
-            Resources["Phase1Color"] = styleSettings.Phase1Color;
-            Resources["Phase2Color"] = styleSettings.Phase2Color;
-            Resources["Phase3Color"] = styleSettings.Phase3Color;
-            Resources["CriticalPathColor"] = styleSettings.CriticalPathColor;
-            Resources["DependencyLineColor"] = styleSettings.DependencyLineColor;
-            Resources["CriticalPathDependencyColor"] = styleSettings.CriticalPathDependencyColor;
-        }
-
-        private void LoadProjectPlan(string filePath)
-        {
-            try
-            {
-                StatusText.Text = "Loading project plan...";
-                tasks.Clear();
-
-                var lines = File.ReadAllLines(filePath);
-                if (lines.Length < 2)
-                {
-                    MessageBox.Show("CSV file is empty or invalid.", "Error", 
-                        MessageBoxButton.OK, MessageBoxImage.Error);
-                    return;
-                }
-
-                for (int i = 1; i < lines.Length; i++)
-                {
-                    var values = ParseCSVLine(lines[i]);
-                    if (values.Length >= 7)
-                    {
-                        try
-                        {
-                            var task = new ProjectTask
-                            {
-                                ID = int.Parse(values[0]),
-                                WBS = values[1],
-                                TaskName = values[2],
-                                Start = DateTime.Parse(values[3]),
-                                Finish = DateTime.Parse(values[4]),
-                                Duration = int.Parse(values[5]),
-                                Predecessors = string.IsNullOrWhiteSpace(values[6]) 
-                                    ? new List<int>() 
-                                    : values[6].Split(';').Select(p => int.Parse(p.Trim())).ToList()
-                            };
-                            tasks.Add(task);
-                        }
-                        catch (Exception ex)
-                        {
-                            Console.WriteLine($"Error parsing line {i}: {ex.Message}");
-                        }
-                    }
-                }
-
-                if (tasks.Count == 0)
-                {
-                    MessageBox.Show("No valid tasks found in CSV file.", "Error", 
-                        MessageBoxButton.OK, MessageBoxImage.Error);
-                    return;
-                }
-
-                projectStartDate = tasks.Min(t => t.Start);
-                projectEndDate = tasks.Max(t => t.Finish);
-
-                DetermineTaskProperties();
-                CalculateCriticalPath();
-                RenderGanttChart();
-
-                int totalDays = (projectEndDate - projectStartDate).Days + 1;
-                int criticalTaskCount = criticalPathTaskIds.Count;
-                ProjectInfoText.Text = $"{tasks.Count} Tasks | " +
-                    $"{projectStartDate:MMM yyyy} - {projectEndDate:MMM yyyy} | " +
-                    $"{totalDays} days | {criticalTaskCount} Critical Tasks";
-
-                StatusText.Text = $"Loaded {tasks.Count} tasks successfully | Critical path calculated";
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error loading file: {ex.Message}", "Error", 
-                    MessageBoxButton.OK, MessageBoxImage.Error);
-                StatusText.Text = "Error loading project plan";
-            }
+            RenderGanttChart();
         }
 
         private string[] ParseCSVLine(string line)
         {
             var result = new List<string>();
             bool inQuotes = false;
-            string currentValue = "";
+            string current = "";
 
             for (int i = 0; i < line.Length; i++)
             {
                 char c = line[i];
-
                 if (c == '"')
                 {
                     inQuotes = !inQuotes;
                 }
                 else if (c == ',' && !inQuotes)
                 {
-                    result.Add(currentValue.Trim());
-                    currentValue = "";
+                    result.Add(current.Trim());
+                    current = "";
                 }
                 else
                 {
-                    currentValue += c;
+                    current += c;
                 }
             }
-            result.Add(currentValue.Trim());
-
+            result.Add(current.Trim());
             return result.ToArray();
         }
 
-        private void DetermineTaskProperties()
+        private List<int> ParsePredecessors(string predecessorString)
         {
-            foreach (var task in tasks)
-            {
-                string wbs = task.WBS;
-                int level = wbs.Split('.').Length - 1;
-                task.IndentLevel = level;
-                task.IsMilestone = task.Duration == 0;
+            if (string.IsNullOrWhiteSpace(predecessorString))
+                return new List<int>();
 
-                if (wbs.StartsWith("1."))
-                    task.PhaseColor = new SolidColorBrush(styleSettings.Phase1Color.Color);
-                else if (wbs.StartsWith("2."))
-                    task.PhaseColor = new SolidColorBrush(styleSettings.Phase2Color.Color);
-                else if (wbs.StartsWith("3."))
-                    task.PhaseColor = new SolidColorBrush(styleSettings.Phase3Color.Color);
-                else
-                    task.PhaseColor = new SolidColorBrush(styleSettings.Phase1Color.Color);
+            return predecessorString
+                .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(p => p.Trim())
+                .Where(p => int.TryParse(p, out _))
+                .Select(int.Parse)
+                .ToList();
+        }
 
-                task.RowBackground = (tasks.IndexOf(task) % 2 == 0) 
-                    ? new SolidColorBrush(Color.FromRgb(255, 255, 255))
-                    : new SolidColorBrush(Color.FromRgb(250, 250, 250));
-            }
+        private void DeterminePhaseColor(ProjectTask task)
+        {
+            if (task.WBS.StartsWith("1."))
+                task.PhaseColor = StyleSettings.Current.Phase1Color;
+            else if (task.WBS.StartsWith("2."))
+                task.PhaseColor = StyleSettings.Current.Phase2Color;
+            else if (task.WBS.StartsWith("3."))
+                task.PhaseColor = StyleSettings.Current.Phase3Color;
+            else
+                task.PhaseColor = new SolidColorBrush(Colors.Gray);
         }
 
         private void CalculateCriticalPath()
         {
-            criticalPathTaskIds.Clear();
-
-            // Reset all task calculations
             foreach (var task in tasks)
-            {
-                task.EarlyStart = DateTime.MinValue;
-                task.EarlyFinish = DateTime.MinValue;
-                task.LateStart = DateTime.MaxValue;
-                task.LateFinish = DateTime.MaxValue;
-                task.TotalFloat = 0;
-                task.IsOnCriticalPath = false;
-            }
-
-            // Forward pass - calculate Early Start and Early Finish
-            CalculateForwardPass();
-
-            // Backward pass - calculate Late Start and Late Finish
-            CalculateBackwardPass();
-
-            // Calculate float and identify critical path
-            foreach (var task in tasks)
-            {
-                if (task.EarlyStart != DateTime.MinValue && task.LateStart != DateTime.MaxValue)
-                {
-                    task.TotalFloat = (task.LateStart - task.EarlyStart).Days;
-                    
-                    // Critical path tasks have zero or near-zero float
-                    if (task.TotalFloat <= 0)
-                    {
-                        task.IsOnCriticalPath = true;
-                        criticalPathTaskIds.Add(task.ID);
-                    }
-                }
-            }
-        }
-
-        private void CalculateForwardPass()
-        {
-            // Find tasks with no predecessors (start tasks)
-            var startTasks = tasks.Where(t => t.Predecessors == null || t.Predecessors.Count == 0).ToList();
-            
-            foreach (var task in startTasks)
             {
                 task.EarlyStart = task.Start;
                 task.EarlyFinish = task.Finish;
             }
 
-            // Process remaining tasks in dependency order
-            bool changed = true;
-            int iterations = 0;
-            int maxIterations = tasks.Count * 2; // Prevent infinite loops
-
-            while (changed && iterations < maxIterations)
+            foreach (var task in tasks.OrderBy(t => t.ID))
             {
-                changed = false;
-                iterations++;
+                foreach (var predId in task.Predecessors)
+                {
+                    var pred = tasks.FirstOrDefault(t => t.ID == predId);
+                    if (pred != null && pred.EarlyFinish > task.EarlyStart)
+                    {
+                        task.EarlyStart = pred.EarlyFinish;
+                        task.EarlyFinish = task.EarlyStart.AddDays(task.Duration);
+                    }
+                }
+            }
 
+            var lastTask = tasks.OrderByDescending(t => t.EarlyFinish).FirstOrDefault();
+            if (lastTask != null)
+            {
                 foreach (var task in tasks)
                 {
-                    if (task.EarlyStart != DateTime.MinValue)
-                        continue; // Already calculated
-
-                    if (task.Predecessors != null && task.Predecessors.Count > 0)
-                    {
-                        bool allPredecessorsCalculated = true;
-                        DateTime maxPredecessorFinish = DateTime.MinValue;
-
-                        foreach (var predId in task.Predecessors)
-                        {
-                            var predecessor = tasks.FirstOrDefault(t => t.ID == predId);
-                            if (predecessor != null)
-                            {
-                                if (predecessor.EarlyFinish == DateTime.MinValue)
-                                {
-                                    allPredecessorsCalculated = false;
-                                    break;
-                                }
-                                if (predecessor.EarlyFinish > maxPredecessorFinish)
-                                {
-                                    maxPredecessorFinish = predecessor.EarlyFinish;
-                                }
-                            }
-                        }
-
-                        if (allPredecessorsCalculated && maxPredecessorFinish != DateTime.MinValue)
-                        {
-                            // Early start is the day after the latest predecessor finishes
-                            task.EarlyStart = maxPredecessorFinish.AddDays(1);
-                            task.EarlyFinish = task.EarlyStart.AddDays(task.Duration);
-                            changed = true;
-                        }
-                    }
-                }
-            }
-        }
-
-        private void CalculateBackwardPass()
-        {
-            // Find the project end date (latest Early Finish)
-            DateTime projectEnd = tasks.Where(t => t.EarlyFinish != DateTime.MinValue)
-                                       .Max(t => t.EarlyFinish);
-
-            // Find tasks with no successors (end tasks)
-            var taskIds = new HashSet<int>(tasks.Select(t => t.ID));
-            var successorIds = new HashSet<int>();
-            
-            foreach (var task in tasks)
-            {
-                if (task.Predecessors != null)
-                {
-                    foreach (var predId in task.Predecessors)
-                    {
-                        successorIds.Add(predId);
-                    }
-                }
-            }
-
-            var endTasks = tasks.Where(t => !successorIds.Contains(t.ID)).ToList();
-
-            foreach (var task in endTasks)
-            {
-                if (task.EarlyFinish != DateTime.MinValue)
-                {
-                    task.LateFinish = task.EarlyFinish;
+                    task.LateFinish = lastTask.EarlyFinish;
                     task.LateStart = task.LateFinish.AddDays(-task.Duration);
                 }
             }
 
-            // Process remaining tasks in reverse dependency order
-            bool changed = true;
-            int iterations = 0;
-            int maxIterations = tasks.Count * 2;
-
-            while (changed && iterations < maxIterations)
+            foreach (var task in tasks.OrderByDescending(t => t.ID))
             {
-                changed = false;
-                iterations++;
-
-                foreach (var task in tasks)
+                var successors = tasks.Where(t => t.Predecessors.Contains(task.ID));
+                foreach (var successor in successors)
                 {
-                    if (task.LateFinish != DateTime.MaxValue)
-                        continue; // Already calculated
-
-                    // Find all successors of this task
-                    var successors = tasks.Where(t => t.Predecessors != null && 
-                                                     t.Predecessors.Contains(task.ID)).ToList();
-
-                    if (successors.Count > 0)
+                    if (successor.LateStart < task.LateFinish)
                     {
-                        bool allSuccessorsCalculated = true;
-                        DateTime minSuccessorStart = DateTime.MaxValue;
-
-                        foreach (var successor in successors)
-                        {
-                            if (successor.LateStart == DateTime.MaxValue)
-                            {
-                                allSuccessorsCalculated = false;
-                                break;
-                            }
-                            if (successor.LateStart < minSuccessorStart)
-                            {
-                                minSuccessorStart = successor.LateStart;
-                            }
-                        }
-
-                        if (allSuccessorsCalculated && minSuccessorStart != DateTime.MaxValue)
-                        {
-                            // Late finish is the day before the earliest successor starts
-                            task.LateFinish = minSuccessorStart.AddDays(-1);
-                            task.LateStart = task.LateFinish.AddDays(-task.Duration);
-                            changed = true;
-                        }
+                        task.LateFinish = successor.LateStart;
+                        task.LateStart = task.LateFinish.AddDays(-task.Duration);
                     }
                 }
+            }
+
+            foreach (var task in tasks)
+            {
+                task.TotalFloat = (int)(task.LateStart - task.EarlyStart).TotalDays;
+                task.IsOnCriticalPath = task.TotalFloat == 0;
             }
         }
 
         private void RenderGanttChart()
         {
-            TaskListItems.ItemsSource = null;
+            if (tasks.Count == 0) return;
+
+            GanttCanvas.Children.Clear();
             TimelineCanvas.Children.Clear();
 
-            int totalDays = (projectEndDate - projectStartDate).Days + 1;
-            double timelineWidth = totalDays * DayWidth;
-            double timelineHeight = tasks.Count * RowHeight + TimelineHeaderHeight;
-
-            TimelineCanvas.Width = timelineWidth;
-            TimelineCanvas.Height = timelineHeight;
-
-            DrawTimelineHeader(timelineWidth);
-            DrawGridLines(timelineWidth, timelineHeight);
+            DrawTimeline();
             DrawTaskBars();
-            DrawDependencies();
-
-            TaskListItems.ItemsSource = tasks;
+            DrawDependencyArrows();
         }
 
-        private void DrawTimelineHeader(double width)
+        private void DrawTimeline()
         {
-            var headerBackground = new Rectangle
+            double x = 0;
+            DateTime currentDate = projectStart;
+
+            while (currentDate <= projectEnd)
             {
-                Width = width,
-                Height = TimelineHeaderHeight,
-                Fill = new SolidColorBrush(Color.FromRgb(236, 240, 241))
-            };
-            Canvas.SetTop(headerBackground, 0);
-            Canvas.SetLeft(headerBackground, 0);
-            TimelineCanvas.Children.Add(headerBackground);
-
-            DateTime currentMonth = new DateTime(projectStartDate.Year, projectStartDate.Month, 1);
-            DateTime endMonth = new DateTime(projectEndDate.Year, projectEndDate.Month, 1).AddMonths(1);
-
-            while (currentMonth < endMonth)
-            {
-                DateTime nextMonth = currentMonth.AddMonths(1);
-                DateTime monthEnd = nextMonth < endMonth ? nextMonth : projectEndDate.AddDays(1);
-                
-                int daysFromStart = (currentMonth - projectStartDate).Days;
-                
-                double x = Math.Max(0, daysFromStart * DayWidth);
-
-                var separator = new Line
+                var line = new Line
                 {
                     X1 = x,
                     Y1 = 0,
                     X2 = x,
-                    Y2 = TimelineHeaderHeight,
-                    Stroke = new SolidColorBrush(Color.FromRgb(189, 195, 199)),
+                    Y2 = tasks.Count * currentRowHeight,
+                    Stroke = Brushes.LightGray,
                     StrokeThickness = 1
                 };
-                TimelineCanvas.Children.Add(separator);
+                GanttCanvas.Children.Add(line);
 
-                var monthLabel = new TextBlock
+                var dateLabel = new TextBlock
                 {
-                    Text = currentMonth.ToString("MMM yyyy"),
-                    FontSize = 12,
-                    FontWeight = FontWeights.Bold,
-                    Foreground = new SolidColorBrush(Color.FromRgb(44, 62, 80))
+                    Text = currentDate.ToString("MM/dd"),
+                    FontSize = 10,
+                    Foreground = Brushes.Black
                 };
-                Canvas.SetTop(monthLabel, 8);
-                Canvas.SetLeft(monthLabel, x + 10);
-                TimelineCanvas.Children.Add(monthLabel);
+                Canvas.SetLeft(dateLabel, x + 2);
+                Canvas.SetTop(dateLabel, 2);
+                TimelineCanvas.Children.Add(dateLabel);
 
-                DateTime weekStart = currentMonth;
-                while (weekStart < monthEnd)
-                {
-                    int weekDaysFromStart = (weekStart - projectStartDate).Days;
-                    double weekX = weekDaysFromStart * DayWidth;
-                    
-                    var weekLabel = new TextBlock
-                    {
-                        Text = $"W{CultureInfo.CurrentCulture.Calendar.GetWeekOfYear(weekStart, CalendarWeekRule.FirstDay, DayOfWeek.Monday)}",
-                        FontSize = 9,
-                        Foreground = new SolidColorBrush(Color.FromRgb(127, 140, 141))
-                    };
-                    Canvas.SetTop(weekLabel, 28);
-                    Canvas.SetLeft(weekLabel, weekX + 2);
-                    TimelineCanvas.Children.Add(weekLabel);
-
-                    weekStart = weekStart.AddDays(7);
-                }
-
-                currentMonth = nextMonth;
+                x += DayWidth * currentZoom;
+                currentDate = currentDate.AddDays(1);
             }
 
-            var bottomBorder = new Line
-            {
-                X1 = 0,
-                Y1 = TimelineHeaderHeight,
-                X2 = width,
-                Y2 = TimelineHeaderHeight,
-                Stroke = new SolidColorBrush(Color.FromRgb(224, 224, 224)),
-                StrokeThickness = 2
-            };
-            TimelineCanvas.Children.Add(bottomBorder);
-        }
-
-        private void DrawGridLines(double width, double height)
-        {
-            int weekNumber = 0;
-            for (DateTime date = projectStartDate; date <= projectEndDate; date = date.AddDays(7))
-            {
-                int daysFromStart = (date - projectStartDate).Days;
-                double x = daysFromStart * DayWidth;
-                double weekWidth = 7 * DayWidth;
-                
-                if (weekNumber % 2 == 1)
-                {
-                    var weekShading = new Rectangle
-                    {
-                        Width = Math.Min(weekWidth, width - x),
-                        Height = height - TimelineHeaderHeight,
-                        Fill = new SolidColorBrush(Color.FromArgb(25, 52, 152, 219)),
-                        IsHitTestVisible = false
-                    };
-                    Canvas.SetLeft(weekShading, x);
-                    Canvas.SetTop(weekShading, TimelineHeaderHeight);
-                    TimelineCanvas.Children.Add(weekShading);
-                }
-                
-                weekNumber++;
-            }
-
-            for (DateTime date = projectStartDate; date <= projectEndDate; date = date.AddDays(7))
-            {
-                int daysFromStart = (date - projectStartDate).Days;
-                double x = daysFromStart * DayWidth;
-
-                var line = new Line
-                {
-                    X1 = x,
-                    Y1 = TimelineHeaderHeight,
-                    X2 = x,
-                    Y2 = height,
-                    Stroke = new SolidColorBrush(Color.FromRgb(220, 220, 220)),
-                    StrokeThickness = 1
-                };
-                TimelineCanvas.Children.Add(line);
-            }
-
-            for (int i = 0; i <= tasks.Count; i++)
-            {
-                double y = TimelineHeaderHeight + i * RowHeight;
-                var line = new Line
-                {
-                    X1 = 0,
-                    Y1 = y,
-                    X2 = width,
-                    Y2 = y,
-                    Stroke = new SolidColorBrush(Color.FromRgb(224, 224, 224)),
-                    StrokeThickness = 1
-                };
-                TimelineCanvas.Children.Add(line);
-            }
-
-            if (DateTime.Today >= projectStartDate && DateTime.Today <= projectEndDate)
-            {
-                int daysFromStart = (DateTime.Today - projectStartDate).Days;
-                double x = daysFromStart * DayWidth;
-
-                var todayLine = new Line
-                {
-                    X1 = x,
-                    Y1 = TimelineHeaderHeight,
-                    X2 = x,
-                    Y2 = height,
-                    Stroke = new SolidColorBrush(Color.FromRgb(231, 76, 60)),
-                    StrokeThickness = 2,
-                    StrokeDashArray = new DoubleCollection { 5, 3 }
-                };
-                Panel.SetZIndex(todayLine, 100);
-                TimelineCanvas.Children.Add(todayLine);
-            }
+            TimelineCanvas.Width = x;
+            GanttCanvas.Width = x;
         }
 
         private void DrawTaskBars()
         {
-            for (int i = 0; i < tasks.Count; i++)
+            double y = 0;
+
+            foreach (var task in tasks)
             {
-                var task = tasks[i];
-                double y = TimelineHeaderHeight + i * RowHeight;
-
-                int startDay = (task.Start - projectStartDate).Days;
-                int duration = Math.Max(1, (task.Finish - task.Start).Days + 1);
-
-                double x = startDay * DayWidth;
-                double width = duration * DayWidth;
+                double startX = (task.Start - projectStart).TotalDays * DayWidth * currentZoom;
+                double width = task.Duration * DayWidth * currentZoom;
 
                 if (task.IsMilestone)
                 {
-                    DrawMilestone(x, y + RowHeight / 2, task);
+                    var diamond = new Polygon
+                    {
+                        Points = new PointCollection
+                        {
+                            new Point(startX, y + currentRowHeight / 2),
+                            new Point(startX + 10, y + currentRowHeight / 2 - 10),
+                            new Point(startX + 20, y + currentRowHeight / 2),
+                            new Point(startX + 10, y + currentRowHeight / 2 + 10)
+                        },
+                        Fill = task.PhaseColor,
+                        Stroke = Brushes.Black,
+                        StrokeThickness = 1
+                    };
+                    GanttCanvas.Children.Add(diamond);
                 }
                 else
                 {
-                    DrawTaskBar(x, y, width, task);
+                    var rect = new Rectangle
+                    {
+                        Width = Math.Max(width, 5),
+                        Height = currentRowHeight * 0.6,
+                        Fill = task.PhaseColor,
+                        Stroke = task.IsOnCriticalPath ? Brushes.Red : Brushes.Black,
+                        StrokeThickness = task.IsOnCriticalPath ? 2 : 1,
+                        RadiusX = 3,
+                        RadiusY = 3,
+                        Tag = task,
+                        Cursor = Cursors.Hand
+                    };
+
+                    Canvas.SetLeft(rect, startX);
+                    Canvas.SetTop(rect, y + currentRowHeight * 0.2);
+
+                    rect.MouseLeftButtonDown += TaskBar_MouseLeftButtonDown;
+                    rect.MouseMove += TaskBar_MouseMove;
+                    rect.MouseLeftButtonUp += TaskBar_MouseLeftButtonUp;
+
+                    GanttCanvas.Children.Add(rect);
+
+                    var label = new TextBlock
+                    {
+                        Text = task.TaskName,
+                        FontSize = StyleSettings.Current.TaskFontSize,
+                        FontFamily = StyleSettings.Current.TaskFontFamily,
+                        Foreground = Brushes.White,
+                        FontWeight = FontWeights.Bold,
+                        IsHitTestVisible = false
+                    };
+
+                    Canvas.SetLeft(label, startX + 5);
+                    Canvas.SetTop(label, y + currentRowHeight * 0.3);
+                    GanttCanvas.Children.Add(label);
                 }
+
+                y += currentRowHeight;
             }
+
+            GanttCanvas.Height = tasks.Count * currentRowHeight;
         }
 
-        private void DrawTaskBar(double x, double y, double width, ProjectTask task)
+        private void DrawDependencyArrows()
         {
-            // Use critical path color if task is on critical path
-            SolidColorBrush barColor = task.IsOnCriticalPath 
-                ? styleSettings.CriticalPathColor
-                : task.PhaseColor;
-
-            var taskBar = new Border
+            foreach (var task in tasks)
             {
-                Width = width - 4,
-                Height = 24,
-                Background = barColor,
-                CornerRadius = new CornerRadius(4),
-                BorderBrush = new SolidColorBrush(Color.FromRgb(0, 0, 0)),
-                BorderThickness = new Thickness(task.IsOnCriticalPath ? 2 : 0.5),
-                Cursor = Cursors.Hand,
-                Tag = task,
-                Effect = new System.Windows.Media.Effects.DropShadowEffect
+                foreach (var predId in task.Predecessors)
                 {
-                    Color = task.IsOnCriticalPath ? Colors.Red : Colors.Black,
-                    Opacity = task.IsOnCriticalPath ? 0.4 : 0.2,
-                    BlurRadius = task.IsOnCriticalPath ? 6 : 4,
-                    ShadowDepth = 2
+                    var predecessor = tasks.FirstOrDefault(t => t.ID == predId);
+                    if (predecessor == null) continue;
+
+                    double predEndX = (predecessor.Finish - projectStart).TotalDays * DayWidth * currentZoom;
+                    double taskStartX = (task.Start - projectStart).TotalDays * DayWidth * currentZoom;
+
+                    int predIndex = tasks.IndexOf(predecessor);
+                    int taskIndex = tasks.IndexOf(task);
+
+                    double predY = predIndex * currentRowHeight + currentRowHeight / 2;
+                    double taskY = taskIndex * currentRowHeight + currentRowHeight / 2;
+
+                    var line = new Line
+                    {
+                        X1 = predEndX,
+                        Y1 = predY,
+                        X2 = taskStartX,
+                        Y2 = taskY,
+                        Stroke = StyleSettings.Current.DependencyLineColor,
+                        StrokeThickness = 2
+                    };
+
+                    GanttCanvas.Children.Add(line);
+
+                    var arrowHead = new Polygon
+                    {
+                        Points = new PointCollection
+                        {
+                            new Point(taskStartX, taskY),
+                            new Point(taskStartX - 8, taskY - 4),
+                            new Point(taskStartX - 8, taskY + 4)
+                        },
+                        Fill = StyleSettings.Current.DependencyLineColor
+                    };
+
+                    GanttCanvas.Children.Add(arrowHead);
                 }
-            };
-
-            var label = new TextBlock
-            {
-                Text = task.TaskName,
-                FontSize = styleSettings.TaskFontSize,
-                FontFamily = styleSettings.TaskFontFamily,
-                Foreground = Brushes.White,
-                VerticalAlignment = VerticalAlignment.Center,
-                Padding = new Thickness(5, 0, 5, 0),
-                TextTrimming = TextTrimming.CharacterEllipsis,
-                IsHitTestVisible = false,
-                FontWeight = task.IsOnCriticalPath ? FontWeights.Bold : FontWeights.Normal
-            };
-            taskBar.Child = label;
-
-            Canvas.SetLeft(taskBar, x + 2);
-            Canvas.SetTop(taskBar, y + (RowHeight - 24) / 2);
-            Panel.SetZIndex(taskBar, task.IsOnCriticalPath ? 15 : 10);
-            TimelineCanvas.Children.Add(taskBar);
-
-            string criticalPathInfo = task.IsOnCriticalPath 
-                ? "\n⚠ CRITICAL PATH - No schedule slack!" 
-                : $"\nFloat: {task.TotalFloat} days";
-
-            taskBar.ToolTip = $"{task.TaskName}\n" +
-                             $"Start: {task.Start:MMM dd, yyyy}\n" +
-                             $"Finish: {task.Finish:MMM dd, yyyy}\n" +
-                             $"Duration: {task.Duration} days" +
-                             criticalPathInfo +
-                             $"\n(Drag to reschedule)";
-
-            taskBar.MouseLeftButtonDown += TaskBar_MouseLeftButtonDown;
-            taskBar.MouseMove += TaskBar_MouseMove;
-            taskBar.MouseLeftButtonUp += TaskBar_MouseLeftButtonUp;
+            }
         }
 
         private void TaskBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            draggedTaskBar = sender as Border;
-            draggedTask = draggedTaskBar?.Tag as ProjectTask;
-            
-            if (draggedTask != null)
-            {
-                // Show task info in status bar
-                string criticalInfo = draggedTask.IsOnCriticalPath ? " [CRITICAL PATH]" : $" (Float: {draggedTask.TotalFloat} days)";
-                StatusText.Text = $"Task: {draggedTask.TaskName} | Duration: {draggedTask.Duration} days | {draggedTask.Start:MMM dd} - {draggedTask.Finish:MMM dd}{criticalInfo}";
-            }
-            
-            dragStartPoint = e.GetPosition(TimelineCanvas);
-            originalLeft = Canvas.GetLeft(draggedTaskBar);
-            
-            draggedTaskBar.CaptureMouse();
-            Panel.SetZIndex(draggedTaskBar, 1000);
-            draggedTaskBar.Opacity = 0.7;
-            
+            var rect = sender as Rectangle;
+            if (rect == null) return;
+
+            draggedTask = rect.Tag as ProjectTask;
+            draggedRectangle = rect;
+            dragStartPoint = e.GetPosition(GanttCanvas);
+            isDragging = true;
+
+            rect.CaptureMouse();
             e.Handled = true;
         }
 
         private void TaskBar_MouseMove(object sender, MouseEventArgs e)
         {
-            if (draggedTaskBar != null && e.LeftButton == MouseButtonState.Pressed)
+            if (!isDragging || draggedTask == null) return;
+
+            Point currentPoint = e.GetPosition(GanttCanvas);
+            double deltaX = currentPoint.X - dragStartPoint.X;
+            int daysDelta = (int)(deltaX / (DayWidth * currentZoom));
+
+            if (daysDelta != 0)
             {
-                Point currentPosition = e.GetPosition(TimelineCanvas);
-                double deltaX = currentPosition.X - dragStartPoint.X;
-                
-                int daysDelta = (int)Math.Round(deltaX / DayWidth);
-                double newLeft = originalLeft + (daysDelta * DayWidth);
-                
-                if (newLeft >= 0 && newLeft + draggedTaskBar.Width <= TimelineCanvas.Width)
+                DateTime newStart = draggedTask.Start.AddDays(daysDelta);
+                DateTime newFinish = draggedTask.Finish.AddDays(daysDelta);
+
+                if (ValidateTaskMove(draggedTask, newStart, newFinish))
                 {
-                    Canvas.SetLeft(draggedTaskBar, newLeft);
+                    MoveTaskAndSuccessors(draggedTask, daysDelta);
+                    dragStartPoint = currentPoint;
+                    RenderGanttChart();
                 }
-                
-                e.Handled = true;
             }
         }
 
         private void TaskBar_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
-            if (draggedTaskBar != null)
+            if (isDragging)
             {
-                draggedTaskBar.ReleaseMouseCapture();
-                draggedTaskBar.Opacity = 1.0;
-                Panel.SetZIndex(draggedTaskBar, 10);
-                
-                double newLeft = Canvas.GetLeft(draggedTaskBar);
-                int daysDelta = (int)Math.Round((newLeft - originalLeft) / DayWidth);
-                
-                if (daysDelta != 0)
-                {
-                    draggedTask.Start = draggedTask.Start.AddDays(daysDelta);
-                    draggedTask.Finish = draggedTask.Finish.AddDays(daysDelta);
-                    
-                    RedrawDependencies();
-                    
-                    StatusText.Text = $"Task '{draggedTask.TaskName}' rescheduled: {draggedTask.Start:MMM dd} - {draggedTask.Finish:MMM dd}";
-                }
-                
-                draggedTaskBar = null;
+                isDragging = false;
                 draggedTask = null;
+                draggedRectangle?.ReleaseMouseCapture();
+                draggedRectangle = null;
+            }
+        }
+
+        private bool ValidateTaskMove(ProjectTask task, DateTime newStart, DateTime newFinish)
+        {
+            foreach (var predId in task.Predecessors)
+            {
+                var pred = tasks.FirstOrDefault(t => t.ID == predId);
+                if (pred != null && newStart < pred.Finish)
+                {
+                    MessageBox.Show($"Cannot move task: it would violate dependency with task {pred.ID} ({pred.TaskName}).\n\n" +
+                                  $"Predecessor finishes on {pred.Finish.ToShortDateString()}, " +
+                                  $"but you're trying to start on {newStart.ToShortDateString()}.",
+                                  "Invalid Move", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private void MoveTaskAndSuccessors(ProjectTask task, int daysDelta)
+        {
+            task.Start = task.Start.AddDays(daysDelta);
+            task.Finish = task.Finish.AddDays(daysDelta);
+            task.OnPropertyChanged(nameof(task.Start));
+            task.OnPropertyChanged(nameof(task.Finish));
+
+            var successors = tasks.Where(t => t.Predecessors.Contains(task.ID)).ToList();
+            foreach (var successor in successors)
+            {
+                if (successor.Start < task.Finish)
+                {
+                    int successorShift = (int)(task.Finish - successor.Start).TotalDays;
+                    MoveTaskAndSuccessors(successor, successorShift);
+                }
+            }
+        }
+
+        private void StyleMenu_Click(object sender, RoutedEventArgs e)
+        {
+            var styleWindow = new StyleMenuWindow(StyleSettings.Current);
+            if (styleWindow.ShowDialog() == true)
+            {
+                StyleSettings.Current = styleWindow.Settings;
+                
+                foreach (var task in tasks)
+                {
+                    DeterminePhaseColor(task);
+                }
+                
+                RenderGanttChart();
+            }
+        }
+
+        private void GanttCanvas_MouseWheel(object sender, MouseWheelEventArgs e)
+        {
+            if (Keyboard.Modifiers == ModifierKeys.Control)
+            {
                 e.Handled = true;
-            }
-        }
-
-        private void DrawMilestone(double x, double y, ProjectTask task)
-        {
-            var fillBrush = task.IsOnCriticalPath 
-                ? styleSettings.CriticalPathColor
-                : (SolidColorBrush)FindResource("MilestoneColor");
-
-            var strokeBrush = task.IsOnCriticalPath
-                ? new SolidColorBrush(Color.FromRgb(169, 50, 38))
-                : new SolidColorBrush(Color.FromRgb(192, 57, 43));
-
-            var diamond = new System.Windows.Shapes.Path
-            {
-                Data = Geometry.Parse("M 12,0 L 24,12 L 12,24 L 0,12 Z"),
-                Fill = fillBrush,
-                Stroke = strokeBrush,
-                StrokeThickness = task.IsOnCriticalPath ? 2 : 1.5,
-                Width = 24,
-                Height = 24,
-                Stretch = Stretch.Fill,
-                Tag = task,
-                Cursor = Cursors.Hand,
-                Effect = new System.Windows.Media.Effects.DropShadowEffect
+                
+                if (e.Delta > 0)
                 {
-                    Color = task.IsOnCriticalPath ? Colors.Red : Colors.Black,
-                    Opacity = task.IsOnCriticalPath ? 0.4 : 0.3,
-                    BlurRadius = task.IsOnCriticalPath ? 4 : 3,
-                    ShadowDepth = 1
+                    currentRowHeight = Math.Min(MAX_ROW_HEIGHT, currentRowHeight + ROW_HEIGHT_STEP);
                 }
-            };
-
-            Canvas.SetLeft(diamond, x - 12);
-            Canvas.SetTop(diamond, y - 12);
-            Panel.SetZIndex(diamond, task.IsOnCriticalPath ? 15 : 10);
-            TimelineCanvas.Children.Add(diamond);
-
-            diamond.MouseLeftButtonDown += Milestone_MouseLeftButtonDown;
-            diamond.MouseMove += Milestone_MouseMove;
-            diamond.MouseLeftButtonUp += Milestone_MouseLeftButtonUp;
-
-            var label = new TextBlock
-            {
-                Text = task.TaskName,
-                FontSize = styleSettings.TaskFontSize - 1,
-                FontFamily = styleSettings.TaskFontFamily,
-                Foreground = new SolidColorBrush(Color.FromRgb(44, 62, 80)),
-                FontWeight = task.IsOnCriticalPath ? FontWeights.Bold : FontWeights.Bold,
-                IsHitTestVisible = false
-            };
-            Canvas.SetLeft(label, x + 15);
-            Canvas.SetTop(label, y - 8);
-            TimelineCanvas.Children.Add(label);
-
-            string criticalPathInfo = task.IsOnCriticalPath 
-                ? "\n⚠ CRITICAL MILESTONE - No schedule slack!" 
-                : $"\nFloat: {task.TotalFloat} days";
-
-            diamond.ToolTip = $"{task.TaskName}\n" +
-                             $"Date: {task.Start:MMM dd, yyyy}\n" +
-                             $"Milestone" +
-                             criticalPathInfo +
-                             $" (Drag to reschedule)";
-        }
-
-        private void Milestone_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-        {
-            draggedMilestone = sender as System.Windows.Shapes.Path;
-            draggedMilestoneTask = draggedMilestone?.Tag as ProjectTask;
-            
-            if (draggedMilestoneTask != null)
-            {
-                // Show milestone info in status bar
-                string criticalInfo = draggedMilestoneTask.IsOnCriticalPath ? " [CRITICAL MILESTONE]" : $" (Float: {draggedMilestoneTask.TotalFloat} days)";
-                StatusText.Text = $"Milestone: {draggedMilestoneTask.TaskName} | Date: {draggedMilestoneTask.Start:MMM dd, yyyy}{criticalInfo}";
-            }
-            
-            milestoneDragStartPoint = e.GetPosition(TimelineCanvas);
-            milestoneOriginalLeft = Canvas.GetLeft(draggedMilestone) + 12;
-            
-            draggedMilestone.CaptureMouse();
-            Panel.SetZIndex(draggedMilestone, 1000);
-            draggedMilestone.Opacity = 0.7;
-            
-            e.Handled = true;
-        }
-
-        private void Milestone_MouseMove(object sender, MouseEventArgs e)
-        {
-            if (draggedMilestone != null && e.LeftButton == MouseButtonState.Pressed)
-            {
-                Point currentPosition = e.GetPosition(TimelineCanvas);
-                double deltaX = currentPosition.X - milestoneDragStartPoint.X;
-                
-                int daysDelta = (int)Math.Round(deltaX / DayWidth);
-                double newLeft = milestoneOriginalLeft + (daysDelta * DayWidth);
-                
-                if (newLeft >= 0 && newLeft <= TimelineCanvas.Width)
+                else
                 {
-                    Canvas.SetLeft(draggedMilestone, newLeft - 12);
+                    currentRowHeight = Math.Max(MIN_ROW_HEIGHT, currentRowHeight - ROW_HEIGHT_STEP);
                 }
                 
-                e.Handled = true;
+                UpdateRowHeightDisplay();
+                RenderGanttChart();
             }
         }
 
-        private void Milestone_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        private void UpdateRowHeightDisplay()
         {
-            if (draggedMilestone != null)
-            {
-                draggedMilestone.ReleaseMouseCapture();
-                draggedMilestone.Opacity = 1.0;
-                Panel.SetZIndex(draggedMilestone, 10);
-                
-                double newLeft = Canvas.GetLeft(draggedMilestone) + 12;
-                int daysDelta = (int)Math.Round((newLeft - milestoneOriginalLeft) / DayWidth);
-                
-                if (daysDelta != 0)
-                {
-                    draggedMilestoneTask.Start = draggedMilestoneTask.Start.AddDays(daysDelta);
-                    draggedMilestoneTask.Finish = draggedMilestoneTask.Finish.AddDays(daysDelta);
-                    
-                    RedrawDependencies();
-                    
-                    StatusText.Text = $"Milestone '{draggedMilestoneTask.TaskName}' rescheduled to: {draggedMilestoneTask.Start:MMM dd, yyyy}";
-                }
-                
-                draggedMilestone = null;
-                draggedMilestoneTask = null;
-                e.Handled = true;
-            }
-        }
-
-        private void DrawDependencies()
-        {
-            int arrowCount = 0;
-            foreach (var task in tasks)
-            {
-                if (task.Predecessors != null && task.Predecessors.Count > 0)
-                {
-                    foreach (var predId in task.Predecessors)
-                    {
-                        var predecessor = tasks.FirstOrDefault(t => t.ID == predId);
-                        if (predecessor != null)
-                        {
-                            DrawDependencyLine(predecessor, task);
-                            arrowCount++;
-                        }
-                    }
-                }
-            }
-            
-            // Debug: verify we're drawing arrows with current style
-            System.Diagnostics.Debug.WriteLine($"Drew {arrowCount} arrows with style: {styleSettings.DependencyLineStyle}, thickness: {styleSettings.DependencyLineThickness}");
-        }
-
-        private void RedrawDependencies()
-        {
-            var dependencyElements = TimelineCanvas.Children.OfType<System.Windows.Shapes.Path>()
-                .Where(p => p.Tag?.ToString() == "dependency")
-                .ToList();
-            
-            foreach (var element in dependencyElements)
-            {
-                TimelineCanvas.Children.Remove(element);
-            }
-            
-            var arrowElements = TimelineCanvas.Children.OfType<Polygon>()
-                .Where(p => p.Tag?.ToString() == "dependency")
-                .ToList();
-            
-            foreach (var element in arrowElements)
-            {
-                TimelineCanvas.Children.Remove(element);
-            }
-            
-            DrawDependencies();
-        }
-
-        private void DrawDependencyLine(ProjectTask from, ProjectTask to)
-        {
-            int fromIndex = tasks.IndexOf(from);
-            int toIndex = tasks.IndexOf(to);
-
-            double fromX = (from.Finish - projectStartDate).Days * DayWidth + DayWidth;
-            double fromY = TimelineHeaderHeight + fromIndex * RowHeight + RowHeight / 2;
-
-            double toX = (to.Start - projectStartDate).Days * DayWidth;
-            double toY = TimelineHeaderHeight + toIndex * RowHeight + RowHeight / 2;
-
-            // Check if this dependency is part of critical path
-            bool isCriticalDependency = from.IsOnCriticalPath && to.IsOnCriticalPath;
-
-            var pathFigure = new PathFigure { StartPoint = new Point(fromX, fromY) };
-            
-            double midX = (fromX + toX) / 2;
-            pathFigure.Segments.Add(new BezierSegment(
-                new Point(midX, fromY),
-                new Point(midX, toY),
-                new Point(toX - 8, toY),
-                true
-            ));
-
-            var pathGeometry = new PathGeometry();
-            pathGeometry.Figures.Add(pathFigure);
-
-            // Determine stroke dash array based on style settings
-            DoubleCollection? dashArray = null;
-            
-            // Critical path arrows always stay SOLID regardless of settings for visual distinction
-            if (isCriticalDependency)
-            {
-                dashArray = null; // Solid
-            }
-            else
-            {
-                // Non-critical arrows use the user's chosen style
-                switch (styleSettings.DependencyLineStyle)
-                {
-                    case DependencyLineStyle.Dashed:
-                        dashArray = new DoubleCollection { 4, 2 };
-                        break;
-                    case DependencyLineStyle.Solid:
-                        dashArray = null;
-                        break;
-                    case DependencyLineStyle.Dotted:
-                        dashArray = new DoubleCollection { 1, 2 };
-                        break;
-                    case DependencyLineStyle.DashDot:
-                        dashArray = new DoubleCollection { 4, 2, 1, 2 };
-                        break;
-                }
-            }
-            
-            // Debug the actual rendering
-            System.Diagnostics.Debug.WriteLine($"Drawing arrow: Style={styleSettings.DependencyLineStyle}, isCritical={isCriticalDependency}, Color={styleSettings.DependencyLineColor.Color}, dashArray={(dashArray == null ? "null/solid" : string.Join(",", dashArray))}");
-
-            var dependencyPath = new System.Windows.Shapes.Path
-            {
-                Data = pathGeometry,
-                Stroke = isCriticalDependency 
-                    ? new SolidColorBrush(styleSettings.CriticalPathDependencyColor.Color)
-                    : new SolidColorBrush(styleSettings.DependencyLineColor.Color),
-                StrokeThickness = isCriticalDependency ? styleSettings.DependencyLineThickness + 0.5 : styleSettings.DependencyLineThickness,
-                StrokeDashArray = dashArray,
-                Tag = "dependency"
-            };
-
-            Panel.SetZIndex(dependencyPath, isCriticalDependency ? 5 : 1);
-            TimelineCanvas.Children.Add(dependencyPath);
-
-            var arrowHead = new Polygon
-            {
-                Points = new PointCollection
-                {
-                    new Point(toX - 8, toY),
-                    new Point(toX - 8, toY - 4),
-                    new Point(toX, toY),
-                    new Point(toX - 8, toY + 4)
-                },
-                Fill = isCriticalDependency 
-                    ? new SolidColorBrush(styleSettings.CriticalPathDependencyColor.Color)
-                    : new SolidColorBrush(styleSettings.DependencyLineColor.Color),
-                Tag = "dependency"
-            };
-
-            Panel.SetZIndex(arrowHead, isCriticalDependency ? 5 : 1);
-            TimelineCanvas.Children.Add(arrowHead);
-        }
-
-        private void TaskName_TextChanged(object sender, TextChangedEventArgs e)
-        {
-            var textBox = sender as TextBox;
-            if (textBox?.DataContext is ProjectTask task)
-            {
-                UpdateTaskBarLabel(task);
-            }
-        }
-
-        private void UpdateTaskBarLabel(ProjectTask task)
-        {
-            var taskBars = TimelineCanvas.Children.OfType<Border>()
-                .Where(b => b.Tag is ProjectTask t && t.ID == task.ID);
-            
-            foreach (var taskBar in taskBars)
-            {
-                var label = taskBar.Child as TextBlock;
-                if (label != null)
-                {
-                    label.Text = task.TaskName;
-                }
-            }
-        }
-
-        private void ZoomSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-        {
-            if (tasks.Count == 0) return;
-            ApplyZoom(e.NewValue);
+            this.Title = $"MES Project Plan Viewer - Row Height: {currentRowHeight}px";
         }
 
         private void ZoomIn_Click(object sender, RoutedEventArgs e)
         {
-            double increment = ZoomSlider.Value < 1 ? 0.25 : 0.5;
-            double newZoom = Math.Min(5.0, ZoomSlider.Value + increment);
+            double newZoom = Math.Min(3.0, ZoomSlider.Value + 0.5);
             ZoomSlider.Value = newZoom;
         }
 
         private void ZoomOut_Click(object sender, RoutedEventArgs e)
         {
-            double increment = ZoomSlider.Value <= 1 ? 0.25 : 0.5;
-            double newZoom = Math.Max(0.25, ZoomSlider.Value - increment);
+            double newZoom = Math.Max(0.5, ZoomSlider.Value - 0.5);
             ZoomSlider.Value = newZoom;
         }
 
@@ -1082,18 +523,14 @@ namespace ProjectPlanViewer
         {
             if (tasks.Count == 0) return;
             
-            // Calculate zoom level to fit entire timeline in view
-            int totalDays = (projectEndDate - projectStartDate).Days + 1;
-            double availableWidth = GanttScrollViewer.ActualWidth - 400; // Subtract task list width
-            double requiredWidth = totalDays * baseDayWidth;
+            double availableWidth = GanttScrollViewer.ViewportWidth;
+            double totalDays = (projectEnd - projectStart).TotalDays;
+            double requiredWidth = totalDays * DayWidth;
             
-            if (requiredWidth > 0)
-            {
-                double fitZoom = availableWidth / requiredWidth;
-                fitZoom = Math.Max(0.25, Math.Min(5.0, fitZoom)); // Clamp to zoom range
-                ZoomSlider.Value = fitZoom;
-                StatusText.Text = $"Zoomed to fit: {(int)(fitZoom * 100)}%";
-            }
+            double fitZoom = availableWidth / requiredWidth;
+            fitZoom = Math.Max(0.5, Math.Min(3.0, fitZoom));
+            
+            ZoomSlider.Value = fitZoom;
         }
 
         private void ApplyZoom(double zoomLevel)
@@ -1110,8 +547,8 @@ namespace ProjectPlanViewer
     public class ProjectTask : INotifyPropertyChanged
     {
         private int id;
-        private string wbs = "";
-        private string taskName = "";
+        private string wbs;
+        private string taskName;
 
         public int ID 
         { 
@@ -1153,7 +590,6 @@ namespace ProjectPlanViewer
         public SolidColorBrush PhaseColor { get; set; } = new SolidColorBrush(Colors.Blue);
         public SolidColorBrush RowBackground { get; set; } = new SolidColorBrush(Colors.White);
         
-        // Critical Path Analysis properties
         public DateTime EarlyStart { get; set; }
         public DateTime EarlyFinish { get; set; }
         public DateTime LateStart { get; set; }
@@ -1166,7 +602,7 @@ namespace ProjectPlanViewer
 
         public event PropertyChangedEventHandler? PropertyChanged;
         
-        protected void OnPropertyChanged(string propertyName)
+        public void OnPropertyChanged(string propertyName)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
